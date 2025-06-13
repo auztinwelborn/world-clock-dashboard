@@ -9,7 +9,7 @@
   "dependencies": {
     "lucide-react": "^0.300.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
     "@statsig/js-client": "^4.21.1",
     "@statsig/session-replay": "^1.2.0",
     "@statsig/web-analytics": "^0.3.0"
