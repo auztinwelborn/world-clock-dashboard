@@ -1,31 +1,33 @@
-import { StatsigClient } from '@statsig/js-client';
-import { StatsigSessionReplayPlugin } from '@statsig/session-replay';
-import { StatsigAutoCapturePlugin } from '@statsig/web-analytics';
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import WorldClockDashboard from './App.jsx';
+import App from './App';
 import './index.css';
 
-async function startApp() {
-  const statsig = new StatsigClient(
-    'client-1jKRKqONUD66OY5whX2pFDELaEnSUFfW8vB879CBN',
-    { userID: 'demo-user' },
+import { StatsigProvider, useClientAsyncInit } from '@statsig/react-bindings';
+import { StatsigAutoCapturePlugin } from '@statsig/web-analytics';
+import { StatsigSessionReplayPlugin } from '@statsig/session-replay';
+
+function StatsigWrapper() {
+  const { client } = useClientAsyncInit(
+    "client-1jKRKqgQNUDG6QY5wHhX2pFDELaEnSUFWw8vB879CBN",
+    { userID: 'a-user' },
     {
       plugins: [
-        new StatsigSessionReplayPlugin(),
         new StatsigAutoCapturePlugin(),
+        new StatsigSessionReplayPlugin(),
       ],
     }
   );
 
-  await statsig.initializeAsync();
-
-  ReactDOM.createRoot(document.getElementById('root')).render(
-    <React.StrictMode>
-      <WorldClockDashboard />
-    </React.StrictMode>
+  return (
+    <StatsigProvider client={client} loadingComponent={<div>Loading...</div>}>
+      <App />
+    </StatsigProvider>
   );
 }
 
-startApp();
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <StatsigWrapper />
+  </React.StrictMode>
+);
