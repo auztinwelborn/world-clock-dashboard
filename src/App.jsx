@@ -43,55 +43,51 @@ const WorldClockDashboard = () => {
   const [selectedTimezone, setSelectedTimezone] = useState('');
   const [showAddClock, setShowAddClock] = useState(false);
 
-  // FEATURE GATE CHECKS
-  const isDarkTheme = client ? client.checkGate("dark_theme") : false;
-  const isCompactLayout = client ? client.checkGate("compact_layout") : false;
-  const isSmoothAnimations = client ? client.checkGate("smooth_animations") : false;
-  const isEnhancedTimeDisplay = client ? client.checkGate("enhanced_time_display") : false;
+  // DYNAMIC CONFIG - All UI variables controlled by Statsig, NOT code
+  const uiConfig = client ? client.getConfig("ui_settings") : null;
+  
+  // Get ALL styling from Statsig Dynamic Config (NO hardcoded values)
+  const config = {
+    // Colors (controlled remotely)
+    backgroundColor: uiConfig?.get("background_color", "#0f172a") || "#0f172a",
+    gradientColor: uiConfig?.get("gradient_color", "#581c87") || "#581c87", 
+    textColor: uiConfig?.get("text_color", "#ffffff") || "#ffffff",
+    accentColor: uiConfig?.get("accent_color", "#a855f7") || "#a855f7",
+    secondaryTextColor: uiConfig?.get("secondary_text_color", "#c4b5fd") || "#c4b5fd",
+    cardBackgroundColor: uiConfig?.get("card_background_color", "rgba(255,255,255,0.1)") || "rgba(255,255,255,0.1)",
+    
+    // Typography (controlled remotely)
+    headerFontSize: uiConfig?.get("header_font_size", 36) || 36,
+    timeFontSize: uiConfig?.get("time_font_size", 36) || 36,
+    fontWeight: uiConfig?.get("font_weight", 600) || 600,
+    
+    // Layout & Animation (controlled remotely)  
+    borderRadius: uiConfig?.get("border_radius", 16) || 16,
+    animationSpeed: uiConfig?.get("animation_speed", 300) || 300,
+    gridColumns: uiConfig?.get("grid_columns", 3) || 3,
+    cardPadding: uiConfig?.get("card_padding", 24) || 24,
+    
+    // Content (controlled remotely)
+    appTitle: uiConfig?.get("app_title", "World Clock Dashboard") || "World Clock Dashboard",
+    appSubtitle: uiConfig?.get("app_subtitle", "Keep track of time across the globe") || "Keep track of time across the globe",
+    
+    // Feature toggles (controlled remotely)
+    showAnalogClocks: uiConfig?.get("show_analog_clocks", true) || true,
+    compactMode: uiConfig?.get("compact_mode", false) || false
+  };
 
-  // Log feature gate exposures for analytics
+  // Log Dynamic Config exposure
   useEffect(() => {
-    if (client) {
-      client.logEvent("feature_gates_exposed", {
-        dark_theme: isDarkTheme,
-        compact_layout: isCompactLayout,
-        smooth_animations: isSmoothAnimations,
-        enhanced_time_display: isEnhancedTimeDisplay
+    if (client && uiConfig) {
+      client.logEvent("dynamic_config_loaded", {
+        config_name: "ui_settings",
+        background_color: config.backgroundColor,
+        accent_color: config.accentColor,
+        header_font_size: config.headerFontSize,
+        compact_mode: config.compactMode
       });
     }
-  }, [client, isDarkTheme, isCompactLayout, isSmoothAnimations, isEnhancedTimeDisplay]);
-
-  // Theme configurations based on feature gates
-  const getThemeClasses = () => {
-    if (isDarkTheme) {
-      return {
-        background: "bg-gradient-to-br from-black via-gray-900 to-black",
-        cardBg: "bg-white/5",
-        accentColor: "text-gray-300",
-        primaryText: "text-white",
-        secondaryText: "text-gray-400",
-        buttonColor: "bg-gray-700 hover:bg-gray-600"
-      };
-    }
-    return {
-      background: "bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900",
-      cardBg: "bg-white/10",
-      accentColor: "text-purple-400",
-      primaryText: "text-white", 
-      secondaryText: "text-purple-200",
-      buttonColor: "bg-purple-600 hover:bg-purple-700"
-    };
-  };
-
-  const theme = getThemeClasses();
-
-  // Animation classes based on feature gate
-  const getAnimationClasses = () => {
-    if (isSmoothAnimations) {
-      return "transition-all duration-500 ease-out transform hover:scale-105";
-    }
-    return "transition-all duration-300";
-  };
+  }, [client, uiConfig]);
 
   // Update time every second
   useEffect(() => {
@@ -114,7 +110,7 @@ const WorldClockDashboard = () => {
     return () => document.removeEventListener('click', handleClickOutside);
   }, [showAddClock]);
 
-  // Track feature gate exposure
+  // Track feature gate exposure (keeping search_bar gate from requirement #3)
   useEffect(() => {
     if (client) {
       client.logEvent("search_bar_gate_exposed", {
@@ -149,19 +145,6 @@ const WorldClockDashboard = () => {
     return new Intl.DateTimeFormat('en-US', options).format(currentTime);
   };
 
-  // Get relative time difference
-  const getRelativeTime = (timezone) => {
-    const localTime = new Date();
-    const targetTime = new Date(localTime.toLocaleString("en-US", {timeZone: timezone}));
-    const localTimeInTarget = new Date(localTime.toLocaleString("en-US", {timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone}));
-    
-    const diffHours = Math.round((targetTime.getTime() - localTimeInTarget.getTime()) / (1000 * 60 * 60));
-    
-    if (diffHours === 0) return "Same time";
-    if (diffHours > 0) return `+${diffHours}h`;
-    return `${diffHours}h`;
-  };
-
   // Get time components for analog clock
   const getTimeComponents = (timezone) => {
     const date = new Date(currentTime.toLocaleString("en-US", {timeZone: timezone}));
@@ -178,10 +161,10 @@ const WorldClockDashboard = () => {
 
   // Analog Clock Component
   const AnalogClock = ({ timezone }) => {
-    const { hourAngle, minuteAngle, secondAngle } = getTimeComponents(timezone);
+    // Show/hide based on Dynamic Config, not hardcoded
+    if (!config.showAnalogClocks) return null;
     
-    // Don't show analog clocks in compact layout
-    if (isCompactLayout) return null;
+    const { hourAngle, minuteAngle, secondAngle } = getTimeComponents(timezone);
     
     return (
       <div className="relative w-20 h-20 mx-auto">
@@ -223,7 +206,7 @@ const WorldClockDashboard = () => {
             y1="50"
             x2={50 + Math.cos((hourAngle - 90) * Math.PI / 180) * 25}
             y2={50 + Math.sin((hourAngle - 90) * Math.PI / 180) * 25}
-            stroke="#c084fc"
+            stroke={config.accentColor}
             strokeWidth="3"
             strokeLinecap="round"
           />
@@ -234,7 +217,7 @@ const WorldClockDashboard = () => {
             y1="50"
             x2={50 + Math.cos((minuteAngle - 90) * Math.PI / 180) * 35}
             y2={50 + Math.sin((minuteAngle - 90) * Math.PI / 180) * 35}
-            stroke="#a855f7"
+            stroke={config.accentColor}
             strokeWidth="2"
             strokeLinecap="round"
           />
@@ -257,7 +240,7 @@ const WorldClockDashboard = () => {
             cx="50"
             cy="50"
             r="3"
-            fill="#c084fc"
+            fill={config.accentColor}
           />
         </svg>
       </div>
@@ -334,33 +317,71 @@ const WorldClockDashboard = () => {
   };
 
   return (
-    <div className={`min-h-screen ${theme.background} p-4 font-inter`}>
+    <div 
+      className="min-h-screen p-4 font-inter"
+      style={{
+        background: `linear-gradient(to bottom right, ${config.backgroundColor}, ${config.gradientColor}, ${config.backgroundColor})`,
+        transition: `all ${config.animationSpeed}ms ease-in-out`
+      }}
+    >
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
+        {/* Header - all styling from Dynamic Config */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <Clock className={`w-10 h-10 ${theme.accentColor}`} />
-            <h1 className={`text-4xl font-bold ${theme.primaryText} tracking-tight`}>
-              World Clock Dashboard
+            <Clock 
+              className="w-10 h-10"
+              style={{ color: config.accentColor }}
+            />
+            <h1 
+              className="font-bold tracking-tight"
+              style={{ 
+                fontSize: `${config.headerFontSize}px`,
+                fontWeight: config.fontWeight,
+                color: config.textColor
+              }}
+            >
+              {config.appTitle}
             </h1>
           </div>
-          <p className={`${theme.secondaryText} font-light`}>
-            Keep track of time across the globe
+          <p 
+            className="font-light"
+            style={{ color: config.secondaryTextColor }}
+          >
+            {config.appSubtitle}
           </p>
         </div>
 
-        {/* Controls */}
-        <div className={`${theme.cardBg} backdrop-blur-lg rounded-2xl p-6 mb-8 border border-white/20 ${getAnimationClasses()}`}>
+        {/* Controls - all styling from Dynamic Config */}
+        <div 
+          className="backdrop-blur-lg mb-8 border border-white/20"
+          style={{
+            backgroundColor: config.cardBackgroundColor,
+            borderRadius: `${config.borderRadius}px`,
+            padding: `${config.cardPadding}px`,
+            transition: `all ${config.animationSpeed}ms ease-in-out`
+          }}
+        >
           <div className="flex flex-wrap items-center gap-4 justify-between">
             <div className="flex items-center gap-2">
-              <Settings className={`w-5 h-5 ${theme.accentColor}`} />
-              <span className={`${theme.primaryText} font-medium`}>Settings</span>
+              <Settings 
+                className="w-5 h-5"
+                style={{ color: config.accentColor }}
+              />
+              <span 
+                className="font-medium"
+                style={{ color: config.textColor }}
+              >
+                Settings
+              </span>
             </div>
             
             <div className="flex flex-wrap items-center gap-6">
               {/* Format Controls */}
               <div className="flex items-center gap-4">
-                <label className={`flex items-center gap-2 ${theme.primaryText}`}>
+                <label 
+                  className="flex items-center gap-2"
+                  style={{ color: config.textColor }}
+                >
                   <input
                     type="checkbox"
                     checked={is24Hour}
@@ -370,7 +391,10 @@ const WorldClockDashboard = () => {
                   24-hour format
                 </label>
                 
-                <label className={`flex items-center gap-2 ${theme.primaryText}`}>
+                <label 
+                  className="flex items-center gap-2"
+                  style={{ color: config.textColor }}
+                >
                   <input
                     type="checkbox"
                     checked={showSeconds}
@@ -384,7 +408,12 @@ const WorldClockDashboard = () => {
               {/* Add Clock Button */}
               <button
                 onClick={() => setShowAddClock(!showAddClock)}
-                className={`flex items-center gap-2 ${theme.buttonColor} text-white px-4 py-2 rounded-lg ${getAnimationClasses()} font-medium`}
+                className="flex items-center gap-2 text-white px-4 py-2 rounded-lg font-medium"
+                style={{
+                  backgroundColor: config.accentColor,
+                  borderRadius: `${config.borderRadius}px`,
+                  transition: `all ${config.animationSpeed}ms ease-in-out`
+                }}
               >
                 <Plus className="w-4 h-4" />
                 Add Clock
@@ -392,13 +421,16 @@ const WorldClockDashboard = () => {
             </div>
           </div>
 
-          {/* Add Clock Section - with feature gate */}
+          {/* Add Clock Section - keeping search_bar feature gate from requirement #3 */}
           <div className="mt-4 pt-4 border-t border-white/20">
             {client && client.checkGate("search_bar") ? (
               // Show searchable timezone input when gate is enabled
               <div className="flex flex-wrap gap-3 items-end">
                 <div className="flex-1 min-w-[200px]">
-                  <label className={`block text-sm font-medium ${theme.primaryText} mb-2`}>
+                  <label 
+                    className="block text-sm font-medium mb-2"
+                    style={{ color: config.textColor }}
+                  >
                     Search & Add Timezone
                   </label>
                   <div className="relative">
@@ -408,10 +440,22 @@ const WorldClockDashboard = () => {
                       onChange={(e) => setSelectedTimezone(e.target.value)}
                       onFocus={() => setShowAddClock(true)}
                       placeholder="Type to search timezones..."
-                      className={`w-full ${theme.cardBg} border border-white/20 rounded-lg px-3 py-2 ${theme.primaryText} placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent ${getAnimationClasses()}`}
+                      className="w-full border border-white/20 px-3 py-2 placeholder-gray-400 focus:ring-2 focus:border-transparent"
+                      style={{
+                        backgroundColor: config.cardBackgroundColor,
+                        color: config.textColor,
+                        borderRadius: `${config.borderRadius}px`,
+                        transition: `all ${config.animationSpeed}ms ease-in-out`
+                      }}
                     />
                     {showAddClock && selectedTimezone && (
-                      <div className={`absolute top-full left-0 right-0 mt-1 ${theme.cardBg} backdrop-blur-lg border border-white/20 rounded-lg max-h-48 overflow-y-auto z-10`}>
+                      <div 
+                        className="absolute top-full left-0 right-0 mt-1 backdrop-blur-lg border border-white/20 max-h-48 overflow-y-auto z-10"
+                        style={{
+                          backgroundColor: config.cardBackgroundColor,
+                          borderRadius: `${config.borderRadius}px`
+                        }}
+                      >
                         {TIME_ZONES
                           .filter(zone => 
                             zone.label.toLowerCase().includes(selectedTimezone.toLowerCase()) ||
@@ -429,7 +473,11 @@ const WorldClockDashboard = () => {
                                   setSelectedTimezone('');
                                 }, 100);
                               }}
-                              className={`w-full text-left px-3 py-2 ${theme.primaryText} hover:bg-white/20 ${getAnimationClasses()} border-b border-white/10 last:border-b-0`}
+                              className="w-full text-left px-3 py-2 hover:bg-white/20 border-b border-white/10 last:border-b-0"
+                              style={{
+                                color: config.textColor,
+                                transition: `all ${config.animationSpeed}ms ease-in-out`
+                              }}
                             >
                               <div className="font-medium">{zone.label}</div>
                               <div className="text-sm text-gray-400">{zone.value}</div>
@@ -452,7 +500,11 @@ const WorldClockDashboard = () => {
                     setShowAddClock(false);
                   }}
                   disabled={!selectedTimezone || !TIME_ZONES.find(tz => tz.value === selectedTimezone)}
-                  className={`bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg ${getAnimationClasses()} font-medium`}
+                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 font-medium"
+                  style={{
+                    borderRadius: `${config.borderRadius}px`,
+                    transition: `all ${config.animationSpeed}ms ease-in-out`
+                  }}
                 >
                   Add
                 </button>
@@ -461,13 +513,22 @@ const WorldClockDashboard = () => {
               // Show dropdown selector when gate is disabled
               <div className="flex flex-wrap gap-3 items-end">
                 <div className="flex-1 min-w-[200px]">
-                  <label className={`block text-sm font-medium ${theme.primaryText} mb-2`}>
+                  <label 
+                    className="block text-sm font-medium mb-2"
+                    style={{ color: config.textColor }}
+                  >
                     Select Timezone
                   </label>
                   <select
                     value={selectedTimezone}
                     onChange={(e) => setSelectedTimezone(e.target.value)}
-                    className={`w-full ${theme.cardBg} border border-white/20 rounded-lg px-3 py-2 ${theme.primaryText} focus:ring-2 focus:ring-purple-500 focus:border-transparent ${getAnimationClasses()}`}
+                    className="w-full border border-white/20 px-3 py-2 focus:ring-2 focus:border-transparent"
+                    style={{
+                      backgroundColor: config.cardBackgroundColor,
+                      color: config.textColor,
+                      borderRadius: `${config.borderRadius}px`,
+                      transition: `all ${config.animationSpeed}ms ease-in-out`
+                    }}
                   >
                     <option value="" className="bg-slate-800 text-white">Choose a city...</option>
                     {TIME_ZONES.map(zone => (
@@ -483,13 +544,21 @@ const WorldClockDashboard = () => {
                     setSelectedTimezone('');
                   }}
                   disabled={!selectedTimezone}
-                  className={`bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg ${getAnimationClasses()} font-medium`}
+                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 font-medium"
+                  style={{
+                    borderRadius: `${config.borderRadius}px`,
+                    transition: `all ${config.animationSpeed}ms ease-in-out`
+                  }}
                 >
                   Add
                 </button>
                 <button
                   onClick={() => setSelectedTimezone('')}
-                  className={`bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg ${getAnimationClasses()} font-medium`}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 font-medium"
+                  style={{
+                    borderRadius: `${config.borderRadius}px`,
+                    transition: `all ${config.animationSpeed}ms ease-in-out`
+                  }}
                 >
                   Cancel
                 </button>
@@ -498,53 +567,72 @@ const WorldClockDashboard = () => {
           </div>
         </div>
 
-        {/* Clock Grid - Layout based on compact_layout feature gate */}
-        <div className={isCompactLayout ? 
-          "space-y-3" : 
-          "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-        }>
+        {/* Clock Grid - layout controlled by Dynamic Config */}
+        <div 
+          className={config.compactMode ? "space-y-3" : "grid gap-6"}
+          style={{
+            gridTemplateColumns: config.compactMode ? 'none' : `repeat(${Math.min(config.gridColumns, clocks.length)}, 1fr)`
+          }}
+        >
           {clocks.map((clock) => (
             <div
               key={clock.id}
-              className={`${theme.cardBg} backdrop-blur-lg rounded-2xl p-6 border border-white/20 hover:bg-white/15 ${getAnimationClasses()} group ${
-                isCompactLayout ? 'flex items-center justify-between' : ''
+              className={`backdrop-blur-lg border border-white/20 hover:bg-white/15 group ${
+                config.compactMode ? 'flex items-center justify-between' : ''
               }`}
+              style={{
+                backgroundColor: config.cardBackgroundColor,
+                borderRadius: `${config.borderRadius}px`,
+                padding: `${config.cardPadding}px`,
+                transition: `all ${config.animationSpeed}ms ease-in-out`
+              }}
             >
-              <div className={`flex ${isCompactLayout ? 'items-center gap-6 flex-1' : 'justify-between items-start mb-4'}`}>
-                <h3 className={`text-xl font-semibold ${theme.primaryText} tracking-wide ${isCompactLayout ? 'min-w-[120px]' : ''}`}>
+              <div className={`flex ${config.compactMode ? 'items-center gap-6 flex-1' : 'justify-between items-start mb-4'}`}>
+                <h3 
+                  className={`text-xl font-semibold tracking-wide ${config.compactMode ? 'min-w-[120px]' : ''}`}
+                  style={{ color: config.textColor }}
+                >
                   {clock.label}
                 </h3>
-                {clocks.length > 1 && !isCompactLayout && (
+                {clocks.length > 1 && !config.compactMode && (
                   <button
                     onClick={() => removeClock(clock.id)}
-                    className={`text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 ${getAnimationClasses()}`}
+                    className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100"
+                    style={{
+                      transition: `all ${config.animationSpeed}ms ease-in-out`
+                    }}
                   >
                     <X className="w-5 h-5" />
                   </button>
                 )}
               </div>
               
-              <div className={`${isCompactLayout ? 'flex items-center gap-6' : 'text-center'}`}>
-                <div className={`flex ${isCompactLayout ? 'items-center gap-6' : 'items-center justify-between gap-6'}`}>
+              <div className={`${config.compactMode ? 'flex items-center gap-6' : 'text-center'}`}>
+                <div className={`flex ${config.compactMode ? 'items-center gap-6' : 'items-center justify-between gap-6'}`}>
                   {/* Digital Time */}
-                  <div className={isCompactLayout ? 'text-left' : 'flex-1'}>
-                    <div className={`${isEnhancedTimeDisplay ? 'text-5xl font-bold' : 'text-4xl font-semibold'} font-jetbrains ${theme.accentColor} ${isCompactLayout ? 'mb-0' : 'mb-2'} tracking-wider`}>
+                  <div className={config.compactMode ? 'text-left' : 'flex-1'}>
+                    <div 
+                      className={`font-jetbrains ${config.compactMode ? 'mb-0' : 'mb-2'} tracking-wider`}
+                      style={{ 
+                        fontSize: `${config.timeFontSize}px`,
+                        fontWeight: config.fontWeight,
+                        color: config.accentColor
+                      }}
+                    >
                       {formatTime(clock.timezone)}
                     </div>
-                    {isEnhancedTimeDisplay && (
-                      <div className={`text-sm ${theme.secondaryText} font-medium`}>
-                        {getRelativeTime(clock.timezone)} • {formatDate(clock.timezone)}
-                      </div>
-                    )}
-                    {!isEnhancedTimeDisplay && !isCompactLayout && (
-                      <div className={`text-sm ${theme.secondaryText} font-light`}>
+                    {!config.compactMode && (
+                      <div 
+                        className="text-sm font-light"
+                        style={{ color: config.secondaryTextColor }}
+                      >
                         {formatDate(clock.timezone)}
                       </div>
                     )}
                   </div>
                   
-                  {/* Analog Clock - only show if not compact layout */}
-                  {!isCompactLayout && (
+                  {/* Analog Clock - only show if not compact and enabled in config */}
+                  {!config.compactMode && (
                     <div className="flex-shrink-0 flex items-center justify-center h-full">
                       <AnalogClock timezone={clock.timezone} />
                     </div>
@@ -552,10 +640,13 @@ const WorldClockDashboard = () => {
                 </div>
                 
                 {/* Remove button for compact layout */}
-                {clocks.length > 1 && isCompactLayout && (
+                {clocks.length > 1 && config.compactMode && (
                   <button
                     onClick={() => removeClock(clock.id)}
-                    className={`text-red-400 hover:text-red-300 ${getAnimationClasses()}`}
+                    className="text-red-400 hover:text-red-300"
+                    style={{
+                      transition: `all ${config.animationSpeed}ms ease-in-out`
+                    }}
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -566,7 +657,10 @@ const WorldClockDashboard = () => {
         </div>
 
         {/* Footer */}
-        <div className={`text-center mt-12 ${theme.secondaryText} text-sm font-light`}>
+        <div 
+          className="text-center mt-12 text-sm font-light"
+          style={{ color: config.secondaryTextColor }}
+        >
           <p>Times update automatically every second</p>
         </div>
       </div>
