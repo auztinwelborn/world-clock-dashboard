@@ -59,7 +59,7 @@ const WorldClockDashboard = () => {
       return {
         backgroundColor: uiConfig?.get("dark_background_color", "#000000") || "#000000",
         gradientColor: uiConfig?.get("dark_gradient_color", "#1a1a1a") || "#1a1a1a",
-        accentColor: uiConfig?.get("dark_accent_color", "#cc0000") || "#cc0000",
+        accentColor: uiConfig?.get("dark_accent_color", "#9ca3af") || "#9ca3af",
         textColor: uiConfig?.get("dark_text_color", "#ffffff") || "#ffffff",
         secondaryTextColor: uiConfig?.get("dark_secondary_text_color", "#cccccc") || "#cccccc",
       };
