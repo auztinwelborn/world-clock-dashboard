@@ -43,45 +43,55 @@ const WorldClockDashboard = () => {
   const [selectedTimezone, setSelectedTimezone] = useState('');
   const [showAddClock, setShowAddClock] = useState(false);
 
-  // GET DYNAMIC CONFIG VALUES
-  const uiConfig = client ? client.getConfig("ui_theme_config") : null;
-  
-  // Extract config values with fallbacks
-  const themeConfig = {
-    // Background gradient colors
-    primaryBg: uiConfig?.get("primary_bg_color", "slate-900") || "slate-900",
-    secondaryBg: uiConfig?.get("secondary_bg_color", "purple-900") || "purple-900",
-    
-    // Card styling
-    cardOpacity: uiConfig?.get("card_opacity", 10) || 10,
-    borderRadius: uiConfig?.get("border_radius", "2xl") || "2xl",
-    
-    // Colors
-    accentColor: uiConfig?.get("accent_color", "purple-400") || "purple-400",
-    textPrimary: uiConfig?.get("text_primary_color", "white") || "white",
-    textSecondary: uiConfig?.get("text_secondary_color", "purple-200") || "purple-200",
-    
-    // Animation
-    animationDuration: uiConfig?.get("animation_duration", 300) || 300,
-    hoverOpacity: uiConfig?.get("hover_opacity", 15) || 15,
-    
-    // Typography
-    fontSize: uiConfig?.get("time_font_size", "4xl") || "4xl",
-    fontWeight: uiConfig?.get("time_font_weight", "semibold") || "semibold"
-  };
+  // FEATURE GATE CHECKS
+  const isDarkTheme = client ? client.checkGate("dark_theme") : false;
+  const isCompactLayout = client ? client.checkGate("compact_layout") : false;
+  const isSmoothAnimations = client ? client.checkGate("smooth_animations") : false;
+  const isEnhancedTimeDisplay = client ? client.checkGate("enhanced_time_display") : false;
 
-  // Log config exposure for analytics
+  // Log feature gate exposures for analytics
   useEffect(() => {
-    if (client && uiConfig) {
-      client.logEvent("ui_config_loaded", {
-        config_values: {
-          primary_bg: themeConfig.primaryBg,
-          accent_color: themeConfig.accentColor,
-          animation_duration: themeConfig.animationDuration
-        }
+    if (client) {
+      client.logEvent("feature_gates_exposed", {
+        dark_theme: isDarkTheme,
+        compact_layout: isCompactLayout,
+        smooth_animations: isSmoothAnimations,
+        enhanced_time_display: isEnhancedTimeDisplay
       });
     }
-  }, [client, uiConfig]);
+  }, [client, isDarkTheme, isCompactLayout, isSmoothAnimations, isEnhancedTimeDisplay]);
+
+  // Theme configurations based on feature gates
+  const getThemeClasses = () => {
+    if (isDarkTheme) {
+      return {
+        background: "bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900",
+        cardBg: "bg-white/5",
+        accentColor: "text-blue-400",
+        primaryText: "text-white",
+        secondaryText: "text-blue-200",
+        buttonColor: "bg-blue-600 hover:bg-blue-700"
+      };
+    }
+    return {
+      background: "bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900",
+      cardBg: "bg-white/10",
+      accentColor: "text-purple-400",
+      primaryText: "text-white", 
+      secondaryText: "text-purple-200",
+      buttonColor: "bg-purple-600 hover:bg-purple-700"
+    };
+  };
+
+  const theme = getThemeClasses();
+
+  // Animation classes based on feature gate
+  const getAnimationClasses = () => {
+    if (isSmoothAnimations) {
+      return "transition-all duration-500 ease-out transform hover:scale-105";
+    }
+    return "transition-all duration-300";
+  };
 
   // Update time every second
   useEffect(() => {
@@ -139,6 +149,19 @@ const WorldClockDashboard = () => {
     return new Intl.DateTimeFormat('en-US', options).format(currentTime);
   };
 
+  // Get relative time difference
+  const getRelativeTime = (timezone) => {
+    const localTime = new Date();
+    const targetTime = new Date(localTime.toLocaleString("en-US", {timeZone: timezone}));
+    const localTimeInTarget = new Date(localTime.toLocaleString("en-US", {timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone}));
+    
+    const diffHours = Math.round((targetTime.getTime() - localTimeInTarget.getTime()) / (1000 * 60 * 60));
+    
+    if (diffHours === 0) return "Same time";
+    if (diffHours > 0) return `+${diffHours}h`;
+    return `${diffHours}h`;
+  };
+
   // Get time components for analog clock
   const getTimeComponents = (timezone) => {
     const date = new Date(currentTime.toLocaleString("en-US", {timeZone: timezone}));
@@ -156,6 +179,9 @@ const WorldClockDashboard = () => {
   // Analog Clock Component
   const AnalogClock = ({ timezone }) => {
     const { hourAngle, minuteAngle, secondAngle } = getTimeComponents(timezone);
+    
+    // Don't show analog clocks in compact layout
+    if (isCompactLayout) return null;
     
     return (
       <div className="relative w-20 h-20 mx-auto">
@@ -308,43 +334,33 @@ const WorldClockDashboard = () => {
   };
 
   return (
-    <div 
-      className={`min-h-screen bg-gradient-to-br from-${themeConfig.primaryBg} via-${themeConfig.secondaryBg} to-${themeConfig.primaryBg} p-4 font-inter`}
-      style={{
-        transition: `all ${themeConfig.animationDuration}ms ease-in-out`
-      }}
-    >
+    <div className={`min-h-screen ${theme.background} p-4 font-inter`}>
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <Clock className={`w-10 h-10 text-${themeConfig.accentColor}`} />
-            <h1 className={`text-4xl font-bold text-${themeConfig.textPrimary} tracking-tight`}>
+            <Clock className={`w-10 h-10 ${theme.accentColor}`} />
+            <h1 className={`text-4xl font-bold ${theme.primaryText} tracking-tight`}>
               World Clock Dashboard
             </h1>
           </div>
-          <p className={`text-${themeConfig.textSecondary} font-light`}>
+          <p className={`${theme.secondaryText} font-light`}>
             Keep track of time across the globe
           </p>
         </div>
 
         {/* Controls */}
-        <div 
-          className={`bg-white/${themeConfig.cardOpacity} backdrop-blur-lg rounded-${themeConfig.borderRadius} p-6 mb-8 border border-white/20`}
-          style={{
-            transition: `all ${themeConfig.animationDuration}ms ease-in-out`
-          }}
-        >
+        <div className={`${theme.cardBg} backdrop-blur-lg rounded-2xl p-6 mb-8 border border-white/20 ${getAnimationClasses()}`}>
           <div className="flex flex-wrap items-center gap-4 justify-between">
             <div className="flex items-center gap-2">
-              <Settings className={`w-5 h-5 text-${themeConfig.accentColor.replace('-400', '-300')}`} />
-              <span className={`text-${themeConfig.textPrimary} font-medium`}>Settings</span>
+              <Settings className={`w-5 h-5 ${theme.accentColor}`} />
+              <span className={`${theme.primaryText} font-medium`}>Settings</span>
             </div>
             
             <div className="flex flex-wrap items-center gap-6">
               {/* Format Controls */}
               <div className="flex items-center gap-4">
-                <label className={`flex items-center gap-2 text-${themeConfig.textPrimary}`}>
+                <label className={`flex items-center gap-2 ${theme.primaryText}`}>
                   <input
                     type="checkbox"
                     checked={is24Hour}
@@ -354,7 +370,7 @@ const WorldClockDashboard = () => {
                   24-hour format
                 </label>
                 
-                <label className={`flex items-center gap-2 text-${themeConfig.textPrimary}`}>
+                <label className={`flex items-center gap-2 ${theme.primaryText}`}>
                   <input
                     type="checkbox"
                     checked={showSeconds}
@@ -368,10 +384,7 @@ const WorldClockDashboard = () => {
               {/* Add Clock Button */}
               <button
                 onClick={() => setShowAddClock(!showAddClock)}
-                className={`flex items-center gap-2 bg-${themeConfig.accentColor.replace('-400', '-600')} hover:bg-${themeConfig.accentColor.replace('-400', '-700')} text-white px-4 py-2 rounded-lg font-medium`}
-                style={{
-                  transition: `all ${themeConfig.animationDuration}ms ease-in-out`
-                }}
+                className={`flex items-center gap-2 ${theme.buttonColor} text-white px-4 py-2 rounded-lg ${getAnimationClasses()} font-medium`}
               >
                 <Plus className="w-4 h-4" />
                 Add Clock
@@ -385,7 +398,7 @@ const WorldClockDashboard = () => {
               // Show searchable timezone input when gate is enabled
               <div className="flex flex-wrap gap-3 items-end">
                 <div className="flex-1 min-w-[200px]">
-                  <label className={`block text-sm font-medium text-${themeConfig.textPrimary} mb-2`}>
+                  <label className={`block text-sm font-medium ${theme.primaryText} mb-2`}>
                     Search & Add Timezone
                   </label>
                   <div className="relative">
@@ -395,13 +408,10 @@ const WorldClockDashboard = () => {
                       onChange={(e) => setSelectedTimezone(e.target.value)}
                       onFocus={() => setShowAddClock(true)}
                       placeholder="Type to search timezones..."
-                      className={`w-full bg-white/${themeConfig.cardOpacity} border border-white/20 rounded-lg px-3 py-2 text-${themeConfig.textPrimary} placeholder-gray-400 focus:ring-2 focus:ring-${themeConfig.accentColor.replace('-400', '-500')} focus:border-transparent`}
-                      style={{
-                        transition: `all ${themeConfig.animationDuration}ms ease-in-out`
-                      }}
+                      className={`w-full ${theme.cardBg} border border-white/20 rounded-lg px-3 py-2 ${theme.primaryText} placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent ${getAnimationClasses()}`}
                     />
                     {showAddClock && selectedTimezone && (
-                      <div className={`absolute top-full left-0 right-0 mt-1 bg-white/${themeConfig.cardOpacity} backdrop-blur-lg border border-white/20 rounded-lg max-h-48 overflow-y-auto z-10`}>
+                      <div className={`absolute top-full left-0 right-0 mt-1 ${theme.cardBg} backdrop-blur-lg border border-white/20 rounded-lg max-h-48 overflow-y-auto z-10`}>
                         {TIME_ZONES
                           .filter(zone => 
                             zone.label.toLowerCase().includes(selectedTimezone.toLowerCase()) ||
@@ -419,10 +429,7 @@ const WorldClockDashboard = () => {
                                   setSelectedTimezone('');
                                 }, 100);
                               }}
-                              className={`w-full text-left px-3 py-2 text-${themeConfig.textPrimary} hover:bg-white/${themeConfig.hoverOpacity} border-b border-white/10 last:border-b-0`}
-                              style={{
-                                transition: `all ${themeConfig.animationDuration}ms ease-in-out`
-                              }}
+                              className={`w-full text-left px-3 py-2 ${theme.primaryText} hover:bg-white/20 ${getAnimationClasses()} border-b border-white/10 last:border-b-0`}
                             >
                               <div className="font-medium">{zone.label}</div>
                               <div className="text-sm text-gray-400">{zone.value}</div>
@@ -445,10 +452,7 @@ const WorldClockDashboard = () => {
                     setShowAddClock(false);
                   }}
                   disabled={!selectedTimezone || !TIME_ZONES.find(tz => tz.value === selectedTimezone)}
-                  className={`bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium`}
-                  style={{
-                    transition: `all ${themeConfig.animationDuration}ms ease-in-out`
-                  }}
+                  className={`bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg ${getAnimationClasses()} font-medium`}
                 >
                   Add
                 </button>
@@ -457,16 +461,13 @@ const WorldClockDashboard = () => {
               // Show dropdown selector when gate is disabled
               <div className="flex flex-wrap gap-3 items-end">
                 <div className="flex-1 min-w-[200px]">
-                  <label className={`block text-sm font-medium text-${themeConfig.textPrimary} mb-2`}>
+                  <label className={`block text-sm font-medium ${theme.primaryText} mb-2`}>
                     Select Timezone
                   </label>
                   <select
                     value={selectedTimezone}
                     onChange={(e) => setSelectedTimezone(e.target.value)}
-                    className={`w-full bg-white/${themeConfig.cardOpacity} border border-white/20 rounded-lg px-3 py-2 text-${themeConfig.textPrimary} focus:ring-2 focus:ring-${themeConfig.accentColor.replace('-400', '-500')} focus:border-transparent`}
-                    style={{
-                      transition: `all ${themeConfig.animationDuration}ms ease-in-out`
-                    }}
+                    className={`w-full ${theme.cardBg} border border-white/20 rounded-lg px-3 py-2 ${theme.primaryText} focus:ring-2 focus:ring-purple-500 focus:border-transparent ${getAnimationClasses()}`}
                   >
                     <option value="" className="bg-slate-800 text-white">Choose a city...</option>
                     {TIME_ZONES.map(zone => (
@@ -482,19 +483,13 @@ const WorldClockDashboard = () => {
                     setSelectedTimezone('');
                   }}
                   disabled={!selectedTimezone}
-                  className={`bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium`}
-                  style={{
-                    transition: `all ${themeConfig.animationDuration}ms ease-in-out`
-                  }}
+                  className={`bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg ${getAnimationClasses()} font-medium`}
                 >
                   Add
                 </button>
                 <button
                   onClick={() => setSelectedTimezone('')}
-                  className={`bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium`}
-                  style={{
-                    transition: `all ${themeConfig.animationDuration}ms ease-in-out`
-                  }}
+                  className={`bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg ${getAnimationClasses()} font-medium`}
                 >
                   Cancel
                 </button>
@@ -503,59 +498,75 @@ const WorldClockDashboard = () => {
           </div>
         </div>
 
-        {/* Clock Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Clock Grid - Layout based on compact_layout feature gate */}
+        <div className={isCompactLayout ? 
+          "space-y-3" : 
+          "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        }>
           {clocks.map((clock) => (
             <div
               key={clock.id}
-              className={`bg-white/${themeConfig.cardOpacity} backdrop-blur-lg rounded-${themeConfig.borderRadius} p-6 border border-white/20 hover:bg-white/${themeConfig.hoverOpacity} group`}
-              style={{
-                transition: `all ${themeConfig.animationDuration}ms ease-in-out`
-              }}
+              className={`${theme.cardBg} backdrop-blur-lg rounded-2xl p-6 border border-white/20 hover:bg-white/15 ${getAnimationClasses()} group ${
+                isCompactLayout ? 'flex items-center justify-between' : ''
+              }`}
             >
-              <div className="flex justify-between items-start mb-4">
-                <h3 className={`text-xl font-semibold text-${themeConfig.textPrimary} tracking-wide`}>
+              <div className={`flex ${isCompactLayout ? 'items-center gap-6 flex-1' : 'justify-between items-start mb-4'}`}>
+                <h3 className={`text-xl font-semibold ${theme.primaryText} tracking-wide ${isCompactLayout ? 'min-w-[120px]' : ''}`}>
                   {clock.label}
                 </h3>
-                {clocks.length > 1 && (
+                {clocks.length > 1 && !isCompactLayout && (
                   <button
                     onClick={() => removeClock(clock.id)}
-                    className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100"
-                    style={{
-                      transition: `all ${themeConfig.animationDuration}ms ease-in-out`
-                    }}
+                    className={`text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 ${getAnimationClasses()}`}
                   >
                     <X className="w-5 h-5" />
                   </button>
                 )}
               </div>
               
-              <div className="text-center">
-                <div className="flex items-center justify-between gap-6">
+              <div className={`${isCompactLayout ? 'flex items-center gap-6' : 'text-center'}`}>
+                <div className={`flex ${isCompactLayout ? 'items-center gap-6' : 'items-center justify-between gap-6'}`}>
                   {/* Digital Time */}
-                  <div className="flex-1">
-                    <div 
-                      className={`text-${themeConfig.fontSize} font-jetbrains font-${themeConfig.fontWeight} text-${themeConfig.accentColor.replace('-400', '-300')} mb-2 tracking-wider`}
-                    >
+                  <div className={isCompactLayout ? 'text-left' : 'flex-1'}>
+                    <div className={`${isEnhancedTimeDisplay ? 'text-5xl font-bold' : 'text-4xl font-semibold'} font-jetbrains ${theme.accentColor} ${isCompactLayout ? 'mb-0' : 'mb-2'} tracking-wider`}>
                       {formatTime(clock.timezone)}
                     </div>
-                    <div className={`text-sm text-${themeConfig.textSecondary} font-light`}>
-                      {formatDate(clock.timezone)}
-                    </div>
+                    {isEnhancedTimeDisplay && (
+                      <div className={`text-sm ${theme.secondaryText} font-medium`}>
+                        {getRelativeTime(clock.timezone)} • {formatDate(clock.timezone)}
+                      </div>
+                    )}
+                    {!isEnhancedTimeDisplay && !isCompactLayout && (
+                      <div className={`text-sm ${theme.secondaryText} font-light`}>
+                        {formatDate(clock.timezone)}
+                      </div>
+                    )}
                   </div>
                   
-                  {/* Analog Clock */}
-                  <div className="flex-shrink-0 flex items-center justify-center h-full">
-                    <AnalogClock timezone={clock.timezone} />
-                  </div>
+                  {/* Analog Clock - only show if not compact layout */}
+                  {!isCompactLayout && (
+                    <div className="flex-shrink-0 flex items-center justify-center h-full">
+                      <AnalogClock timezone={clock.timezone} />
+                    </div>
+                  )}
                 </div>
+                
+                {/* Remove button for compact layout */}
+                {clocks.length > 1 && isCompactLayout && (
+                  <button
+                    onClick={() => removeClock(clock.id)}
+                    className={`text-red-400 hover:text-red-300 ${getAnimationClasses()}`}
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
               </div>
             </div>
           ))}
         </div>
 
         {/* Footer */}
-        <div className={`text-center mt-12 text-${themeConfig.textSecondary} text-sm font-light`}>
+        <div className={`text-center mt-12 ${theme.secondaryText} text-sm font-light`}>
           <p>Times update automatically every second</p>
         </div>
       </div>
