@@ -715,13 +715,14 @@ const WorldClockDashboard = () => {
 function generateUserID() {
   let userID = localStorage.getItem('world_clock_user_id');
   
-  if (!userID) {
+  if (!userID || userID === 'a-user') {
     userID = 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
     localStorage.setItem('world_clock_user_id', userID);
   }
   
   return userID;
 }
+
 
 function App() {
   const userID = generateUserID(); // ← Add this line
