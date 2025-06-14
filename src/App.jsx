@@ -1,8 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, X, Clock, Settings } from 'lucide-react';
+
+// STATSIG - Import Statsig React SDK and plugins for feature flags and analytics
 import { StatsigProvider, useClientAsyncInit, useStatsigClient } from "@statsig/react-bindings";
 import { StatsigAutoCapturePlugin } from "@statsig/web-analytics";
 import { StatsigSessionReplayPlugin } from "@statsig/session-replay";
+
+// Generate unique user ID for proper A/B testing across devices
+function generateUserID() {
+  let userID = localStorage.getItem('world_clock_user_id');
+  
+  if (!userID || userID === 'a-user') {
+    userID = 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+    localStorage.setItem('world_clock_user_id', userID);
+  }
+  
+  return userID;
+}
 
 // Import Google Fonts
 const fontLink = document.createElement('link');
@@ -36,41 +50,42 @@ const WorldClockDashboard = () => {
     { id: 2, label: 'London', timezone: 'Europe/London' },
     { id: 3, label: 'Tokyo', timezone: 'Asia/Tokyo' }
   ]);
-  const { client } = useStatsigClient();
+  
+  const { client } = useStatsigClient(); // STATSIG - useStatsigClient hook
   const [currentTime, setCurrentTime] = useState(new Date());
   const [is24Hour, setIs24Hour] = useState(false);
   const [showSeconds, setShowSeconds] = useState(true);
   const [selectedTimezone, setSelectedTimezone] = useState('');
   const [showAddClock, setShowAddClock] = useState(false);
 
-  // FEATURE GATES - Control which theme/layout variant to show
+  // STATSIG - Check feature gates for A/B testing
   const isDarkTheme = client ? client.checkGate("dark_theme") : false;
   const isCompactLayout = client ? client.checkGate("compact_layout") : false;
   const hasSmoothAnimations = client ? client.checkGate("smooth_animations") : false;
   const hasEnhancedTimeDisplay = client ? client.checkGate("enhanced_time_display") : false;
 
-  // DYNAMIC CONFIG - Control the exact values for each variant
-  const uiConfig = client ? client.getDynamicConfig("ui_settings") : null;
+  // STATSIG - Get dynamic config for styling values
+  const config = client ? client.getDynamicConfig("ui_settings") : null;
   
   // Get theme-specific values based on Feature Gates + Dynamic Config
   const getThemeConfig = () => {
     if (isDarkTheme) {
       // Dark theme variant - get dark-specific values from Dynamic Config
       return {
-        backgroundColor: uiConfig?.get("dark_background_color", "#000000") || "#000000",
-        gradientColor: uiConfig?.get("dark_gradient_color", "#1a1a1a") || "#1a1a1a",
-        accentColor: uiConfig?.get("dark_accent_color", "#9ca3af") || "#9ca3af",
-        textColor: uiConfig?.get("dark_text_color", "#ffffff") || "#ffffff",
-        secondaryTextColor: uiConfig?.get("dark_secondary_text_color", "#cccccc") || "#cccccc",
+        backgroundColor: config?.get("dark_background_color", "#000000"), // STATSIG - config.get()
+        gradientColor: config?.get("dark_gradient_color", "#1a1a1a"), // STATSIG - config.get()
+        accentColor: config?.get("dark_accent_color", "#9ca3af"), // STATSIG - config.get()
+        textColor: config?.get("dark_text_color", "#ffffff"), // STATSIG - config.get()
+        secondaryTextColor: config?.get("dark_secondary_text_color", "#cccccc"), // STATSIG - config.get()
       };
     } else {
       // Light theme variant - get light-specific values from Dynamic Config
       return {
-        backgroundColor: uiConfig?.get("light_background_color", "#0f172a") || "#0f172a",
-        gradientColor: uiConfig?.get("light_gradient_color", "#581c87") || "#581c87", 
-        accentColor: uiConfig?.get("light_accent_color", "#a855f7") || "#a855f7",
-        textColor: uiConfig?.get("light_text_color", "#ffffff") || "#ffffff",
-        secondaryTextColor: uiConfig?.get("light_secondary_text_color", "#c4b5fd") || "#c4b5fd",
+        backgroundColor: config?.get("light_background_color", "#0f172a"), // STATSIG - config.get()
+        gradientColor: config?.get("light_gradient_color", "#581c87"), // STATSIG - config.get()
+        accentColor: config?.get("light_accent_color", "#a855f7"), // STATSIG - config.get()
+        textColor: config?.get("light_text_color", "#ffffff"), // STATSIG - config.get()
+        secondaryTextColor: config?.get("light_secondary_text_color", "#c4b5fd"), // STATSIG - config.get()
       };
     }
   };
@@ -78,62 +93,38 @@ const WorldClockDashboard = () => {
   const themeConfig = getThemeConfig();
 
   // Get ALL styling - combines Feature Gates + Dynamic Config
-  const config = {
+  const uiConfig = {
     // Theme colors (Feature Gate decides which set, Dynamic Config provides values)
     ...themeConfig,
     
     // Shared styling (controlled by Dynamic Config only)
-    cardBackgroundColor: uiConfig?.get("card_background_color", "rgba(255,255,255,0.1)") || "rgba(255,255,255,0.1)",
-    headerFontSize: uiConfig?.get("header_font_size", 36) || 36,
+    cardBackgroundColor: config?.get("card_background_color", "rgba(255,255,255,0.1)"), // STATSIG - config.get()
+    headerFontSize: config?.get("header_font_size", 36), // STATSIG - config.get()
     timeFontSize: hasEnhancedTimeDisplay 
-      ? (uiConfig?.get("enhanced_time_font_size", 48) || 48)
-      : (uiConfig?.get("standard_time_font_size", 36) || 36),
-    fontWeight: uiConfig?.get("font_weight", 600) || 600,
-    borderRadius: uiConfig?.get("border_radius", 16) || 16,
+      ? config?.get("enhanced_time_font_size", 48) // STATSIG - config.get()
+      : config?.get("standard_time_font_size", 36), // STATSIG - config.get()
+    fontWeight: config?.get("font_weight", 600), // STATSIG - config.get()
+    borderRadius: config?.get("border_radius", 16), // STATSIG - config.get()
     
     // Animation speed (Feature Gate decides which speed, Dynamic Config provides values)
     animationSpeed: hasSmoothAnimations 
-      ? (uiConfig?.get("smooth_animation_speed", 500) || 500)
-      : (uiConfig?.get("standard_animation_speed", 300) || 300),
+      ? config?.get("smooth_animation_speed", 500) // STATSIG - config.get()
+      : config?.get("standard_animation_speed", 300), // STATSIG - config.get()
     
     // Layout (Feature Gate decides mode, Dynamic Config provides grid settings)
-    gridColumns: uiConfig?.get("grid_columns", 3) || 3,
-    cardPadding: uiConfig?.get("card_padding", 24) || 24,
+    gridColumns: config?.get("grid_columns", 3), // STATSIG - config.get()
+    cardPadding: config?.get("card_padding", 24), // STATSIG - config.get()
     compactMode: isCompactLayout, // Feature Gate controls this directly
     
     // Content (Dynamic Config only)
-    appTitle: uiConfig?.get("app_title", "World Clock Dashboard") || "World Clock Dashboard",
-    appSubtitle: uiConfig?.get("app_subtitle", "Keep track of time across the globe") || "Keep track of time across the globe",
+    appTitle: config?.get("app_title", "World Clock Dashboard"), // STATSIG - config.get()
+    appSubtitle: config?.get("app_subtitle", "Keep track of time across the globe"), // STATSIG - config.get()
     
     // Feature toggles (Dynamic Config only)
-    showAnalogClocks: uiConfig?.get("show_analog_clocks", true) || true,
+    showAnalogClocks: config?.get("show_analog_clocks", true), // STATSIG - config.get()
   };
 
-  // Log Feature Gate exposures
-  useEffect(() => {
-    if (client) {
-      client.logEvent("feature_gates_exposed", {
-        dark_theme: isDarkTheme,
-        compact_layout: isCompactLayout,
-        smooth_animations: hasSmoothAnimations,
-        enhanced_time_display: hasEnhancedTimeDisplay
-      });
-    }
-  }, [client, isDarkTheme, isCompactLayout, hasSmoothAnimations, hasEnhancedTimeDisplay]);
 
-  // Log Dynamic Config exposure
-  useEffect(() => {
-    if (client && uiConfig) {
-      client.logEvent("dynamic_config_loaded", {
-        config_name: "ui_settings",
-        theme_variant: isDarkTheme ? "dark" : "light",
-        background_color: config.backgroundColor,
-        accent_color: config.accentColor,
-        compact_mode: config.compactMode,
-        animation_speed: config.animationSpeed
-      });
-    }
-  }, [client, uiConfig, isDarkTheme]);
 
   // Update time every second
   useEffect(() => {
@@ -156,14 +147,7 @@ const WorldClockDashboard = () => {
     return () => document.removeEventListener('click', handleClickOutside);
   }, [showAddClock]);
 
-  // Track search_bar feature gate exposure
-  useEffect(() => {
-    if (client) {
-      client.logEvent("search_bar_gate_exposed", {
-        gate_value: client.checkGate("search_bar")
-      });
-    }
-  }, [client]);
+
 
   // Format time for a specific timezone
   const formatTime = (timezone) => {
@@ -260,7 +244,7 @@ const WorldClockDashboard = () => {
             y1="50"
             x2={50 + Math.cos((hourAngle - 90) * Math.PI / 180) * 25}
             y2={50 + Math.sin((hourAngle - 90) * Math.PI / 180) * 25}
-            stroke={config.accentColor}
+            stroke={uiConfig.accentColor}
             strokeWidth="3"
             strokeLinecap="round"
           />
@@ -291,7 +275,7 @@ const WorldClockDashboard = () => {
             cx="50"
             cy="50"
             r="3"
-            fill={config.accentColor}
+            fill={uiConfig.accentColor}
           />
         </svg>
       </div>
@@ -321,7 +305,7 @@ const WorldClockDashboard = () => {
     setShowAddClock(false);
 
     if (client) {
-      client.logEvent("clock_added");
+      client.logEvent("clock_added"); // STATSIG - client.logEvent()
     }
   };
 
@@ -330,7 +314,7 @@ const WorldClockDashboard = () => {
     setClocks(prev => prev.filter(clock => clock.id !== id));
 
     if (client) {
-      client.logEvent("clock_removed");
+      client.logEvent("clock_removed"); // STATSIG - client.logEvent()
     }
   };
 
@@ -339,7 +323,7 @@ const WorldClockDashboard = () => {
     setIs24Hour(prev => !prev);
     
     if (client) {
-      client.logEvent("time_format_toggled");
+      client.logEvent("time_format_toggled"); // STATSIG - client.logEvent()
     }
   };
 
@@ -348,7 +332,7 @@ const WorldClockDashboard = () => {
     setShowSeconds(prev => !prev);
     
     if (client) {
-      client.logEvent("seconds_display_toggled");
+      client.logEvent("seconds_display_toggled"); // STATSIG - client.logEvent()
     }
   };
 
@@ -356,8 +340,8 @@ const WorldClockDashboard = () => {
     <div 
       className="min-h-screen p-4 font-inter"
       style={{
-        background: `linear-gradient(to bottom right, ${config.backgroundColor}, ${config.gradientColor}, ${config.backgroundColor})`,
-        transition: `all ${config.animationSpeed}ms ease-in-out`,
+        background: `linear-gradient(to bottom right, ${uiConfig.backgroundColor}, ${uiConfig.gradientColor}, ${uiConfig.backgroundColor})`,
+        transition: `all ${uiConfig.animationSpeed}ms ease-in-out`,
         transform: hasSmoothAnimations ? 'scale(1)' : 'none'
       }}
     >
@@ -368,27 +352,27 @@ const WorldClockDashboard = () => {
             <Clock 
               className="w-10 h-10"
               style={{ 
-                color: config.accentColor,
+                color: uiConfig.accentColor,
                 transform: hasSmoothAnimations ? 'scale(1)' : 'none',
-                transition: `all ${config.animationSpeed}ms ease-in-out`
+                transition: `all ${uiConfig.animationSpeed}ms ease-in-out`
               }}
             />
             <h1 
               className="font-bold tracking-tight"
               style={{ 
-                fontSize: `${config.headerFontSize}px`,
-                fontWeight: config.fontWeight,
-                color: config.textColor
+                fontSize: `${uiConfig.headerFontSize}px`,
+                fontWeight: uiConfig.fontWeight,
+                color: uiConfig.textColor
               }}
             >
-              {config.appTitle}
+              {uiConfig.appTitle} {/* STATSIG - config.get() value */}
             </h1>
           </div>
           <p 
             className="font-light"
-            style={{ color: config.secondaryTextColor }}
+            style={{ color: uiConfig.secondaryTextColor }}
           >
-            {config.appSubtitle}
+            {uiConfig.appSubtitle} {/* STATSIG - config.get() value */}
           </p>
         </div>
 
@@ -396,10 +380,10 @@ const WorldClockDashboard = () => {
         <div 
           className="backdrop-blur-lg mb-8 border border-white/20"
           style={{
-            backgroundColor: config.cardBackgroundColor,
-            borderRadius: `${config.borderRadius}px`,
-            padding: `${config.cardPadding}px`,
-            transition: `all ${config.animationSpeed}ms ease-in-out`,
+            backgroundColor: uiConfig.cardBackgroundColor,
+            borderRadius: `${uiConfig.borderRadius}px`,
+            padding: `${uiConfig.cardPadding}px`,
+            transition: `all ${uiConfig.animationSpeed}ms ease-in-out`,
             transform: hasSmoothAnimations ? 'translateY(0)' : 'none'
           }}
         >
@@ -407,11 +391,11 @@ const WorldClockDashboard = () => {
             <div className="flex items-center gap-2">
               <Settings 
                 className="w-5 h-5"
-                style={{ color: config.accentColor }}
+                style={{ color: uiConfig.accentColor }}
               />
               <span 
                 className="font-medium"
-                style={{ color: config.textColor }}
+                style={{ color: uiConfig.textColor }}
               >
                 Settings
               </span>
@@ -421,7 +405,7 @@ const WorldClockDashboard = () => {
               <div className="flex items-center gap-4">
                 <label 
                   className="flex items-center gap-2"
-                  style={{ color: config.textColor }}
+                  style={{ color: uiConfig.textColor }}
                 >
                   <input
                     type="checkbox"
@@ -434,7 +418,7 @@ const WorldClockDashboard = () => {
                 
                 <label 
                   className="flex items-center gap-2"
-                  style={{ color: config.textColor }}
+                  style={{ color: uiConfig.textColor }}
                 >
                   <input
                     type="checkbox"
@@ -450,9 +434,9 @@ const WorldClockDashboard = () => {
                 onClick={() => setShowAddClock(!showAddClock)}
                 className="flex items-center gap-2 text-white px-4 py-2 rounded-lg font-medium"
                 style={{
-                  backgroundColor: config.accentColor,
-                  borderRadius: `${config.borderRadius}px`,
-                  transition: `all ${config.animationSpeed}ms ease-in-out`,
+                  backgroundColor: uiConfig.accentColor,
+                  borderRadius: `${uiConfig.borderRadius}px`,
+                  transition: `all ${uiConfig.animationSpeed}ms ease-in-out`,
                   transform: hasSmoothAnimations ? 'scale(1)' : 'none'
                 }}
                 onMouseEnter={hasSmoothAnimations ? (e) => e.target.style.transform = 'scale(1.05)' : undefined}
@@ -466,12 +450,12 @@ const WorldClockDashboard = () => {
 
           {/* Add Clock Section - search_bar feature gate */}
           <div className="mt-4 pt-4 border-t border-white/20">
-            {client && client.checkGate("search_bar") ? (
+            {client && client.checkGate("search_bar") ? ( // STATSIG - client.checkGate()
               <div className="flex flex-wrap gap-3 items-end">
                 <div className="flex-1 min-w-[200px]">
                   <label 
                     className="block text-sm font-medium mb-2"
-                    style={{ color: config.textColor }}
+                    style={{ color: uiConfig.textColor }}
                   >
                     Search & Add Timezone
                   </label>
@@ -484,18 +468,18 @@ const WorldClockDashboard = () => {
                       placeholder="Type to search timezones..."
                       className="w-full border border-white/20 px-3 py-2 placeholder-gray-400 focus:ring-2 focus:border-transparent"
                       style={{
-                        backgroundColor: config.cardBackgroundColor,
-                        color: config.textColor,
-                        borderRadius: `${config.borderRadius}px`,
-                        transition: `all ${config.animationSpeed}ms ease-in-out`
+                        backgroundColor: uiConfig.cardBackgroundColor,
+                        color: uiConfig.textColor,
+                        borderRadius: `${uiConfig.borderRadius}px`,
+                        transition: `all ${uiConfig.animationSpeed}ms ease-in-out`
                       }}
                     />
                     {showAddClock && selectedTimezone && (
                       <div 
                         className="absolute top-full left-0 right-0 mt-1 backdrop-blur-lg border border-white/20 max-h-48 overflow-y-auto z-10"
                         style={{
-                          backgroundColor: config.cardBackgroundColor,
-                          borderRadius: `${config.borderRadius}px`
+                          backgroundColor: uiConfig.cardBackgroundColor,
+                          borderRadius: `${uiConfig.borderRadius}px`
                         }}
                       >
                         {TIME_ZONES
@@ -517,8 +501,8 @@ const WorldClockDashboard = () => {
                               }}
                               className="w-full text-left px-3 py-2 hover:bg-white/20 border-b border-white/10 last:border-b-0"
                               style={{
-                                color: config.textColor,
-                                transition: `all ${config.animationSpeed}ms ease-in-out`
+                                color: uiConfig.textColor,
+                                transition: `all ${uiConfig.animationSpeed}ms ease-in-out`
                               }}
                             >
                               <div className="font-medium">{zone.label}</div>
@@ -538,8 +522,8 @@ const WorldClockDashboard = () => {
                   disabled={!selectedTimezone || !TIME_ZONES.find(tz => tz.value === selectedTimezone)}
                   className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 font-medium"
                   style={{
-                    borderRadius: `${config.borderRadius}px`,
-                    transition: `all ${config.animationSpeed}ms ease-in-out`
+                    borderRadius: `${uiConfig.borderRadius}px`,
+                    transition: `all ${uiConfig.animationSpeed}ms ease-in-out`
                   }}
                 >
                   Add
@@ -550,7 +534,7 @@ const WorldClockDashboard = () => {
                 <div className="flex-1 min-w-[200px]">
                   <label 
                     className="block text-sm font-medium mb-2"
-                    style={{ color: config.textColor }}
+                    style={{ color: uiConfig.textColor }}
                   >
                     Select Timezone
                   </label>
@@ -559,10 +543,10 @@ const WorldClockDashboard = () => {
                     onChange={(e) => setSelectedTimezone(e.target.value)}
                     className="w-full border border-white/20 px-3 py-2 focus:ring-2 focus:border-transparent"
                     style={{
-                      backgroundColor: config.cardBackgroundColor,
-                      color: config.textColor,
-                      borderRadius: `${config.borderRadius}px`,
-                      transition: `all ${config.animationSpeed}ms ease-in-out`
+                      backgroundColor: uiConfig.cardBackgroundColor,
+                      color: uiConfig.textColor,
+                      borderRadius: `${uiConfig.borderRadius}px`,
+                      transition: `all ${uiConfig.animationSpeed}ms ease-in-out`
                     }}
                   >
                     <option value="" className="bg-slate-800 text-white">Choose a city...</option>
@@ -581,8 +565,8 @@ const WorldClockDashboard = () => {
                   disabled={!selectedTimezone}
                   className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 font-medium"
                   style={{
-                    borderRadius: `${config.borderRadius}px`,
-                    transition: `all ${config.animationSpeed}ms ease-in-out`
+                    borderRadius: `${uiConfig.borderRadius}px`,
+                    transition: `all ${uiConfig.animationSpeed}ms ease-in-out`
                   }}
                 >
                   Add
@@ -594,40 +578,40 @@ const WorldClockDashboard = () => {
 
         {/* Clock Grid - layout controlled by compact_layout feature gate */}
         <div 
-          className={config.compactMode ? "space-y-3" : "grid gap-6"}
+          className={uiConfig.compactMode ? "space-y-3" : "grid gap-6"}
           style={{
-            gridTemplateColumns: config.compactMode ? 'none' : `repeat(${Math.min(config.gridColumns, clocks.length)}, 1fr)`
+            gridTemplateColumns: uiConfig.compactMode ? 'none' : `repeat(${Math.min(uiConfig.gridColumns, clocks.length)}, 1fr)`
           }}
         >
           {clocks.map((clock) => (
             <div
               key={clock.id}
               className={`backdrop-blur-lg border border-white/20 hover:bg-white/15 group ${
-                config.compactMode ? 'flex items-center justify-between' : ''
+                uiConfig.compactMode ? 'flex items-center justify-between' : ''
               }`}
               style={{
-                backgroundColor: config.cardBackgroundColor,
-                borderRadius: `${config.borderRadius}px`,
-                padding: `${config.cardPadding}px`,
-                transition: `all ${config.animationSpeed}ms ease-in-out`,
+                backgroundColor: uiConfig.cardBackgroundColor,
+                borderRadius: `${uiConfig.borderRadius}px`,
+                padding: `${uiConfig.cardPadding}px`,
+                transition: `all ${uiConfig.animationSpeed}ms ease-in-out`,
                 transform: hasSmoothAnimations ? 'scale(1)' : 'none'
               }}
               onMouseEnter={hasSmoothAnimations ? (e) => e.target.style.transform = 'scale(1.02)' : undefined}
               onMouseLeave={hasSmoothAnimations ? (e) => e.target.style.transform = 'scale(1)' : undefined}
             >
-              <div className={`flex ${config.compactMode ? 'items-center gap-6 flex-1' : 'justify-between items-start mb-4'}`}>
+              <div className={`flex ${uiConfig.compactMode ? 'items-center gap-6 flex-1' : 'justify-between items-start mb-4'}`}>
                 <h3 
-                  className={`text-xl font-semibold tracking-wide ${config.compactMode ? 'min-w-[120px]' : ''}`}
-                  style={{ color: config.textColor }}
+                  className={`text-xl font-semibold tracking-wide ${uiConfig.compactMode ? 'min-w-[120px]' : ''}`}
+                  style={{ color: uiConfig.textColor }}
                 >
                   {clock.label}
                 </h3>
-                {clocks.length > 1 && !config.compactMode && (
+                {clocks.length > 1 && !uiConfig.compactMode && (
                   <button
                     onClick={() => removeClock(clock.id)}
                     className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100"
                     style={{
-                      transition: `all ${config.animationSpeed}ms ease-in-out`
+                      transition: `all ${uiConfig.animationSpeed}ms ease-in-out`
                     }}
                   >
                     <X className="w-5 h-5" />
@@ -635,31 +619,31 @@ const WorldClockDashboard = () => {
                 )}
               </div>
               
-              <div className={`${config.compactMode ? 'flex items-center gap-6' : 'text-center'}`}>
-                <div className={`flex ${config.compactMode ? 'items-center gap-6' : 'items-center justify-between gap-6'}`}>
-                  <div className={config.compactMode ? 'text-left' : 'flex-1'}>
+              <div className={`${uiConfig.compactMode ? 'flex items-center gap-6' : 'text-center'}`}>
+                <div className={`flex ${uiConfig.compactMode ? 'items-center gap-6' : 'items-center justify-between gap-6'}`}>
+                  <div className={uiConfig.compactMode ? 'text-left' : 'flex-1'}>
                     <div 
-                      className={`font-jetbrains ${config.compactMode ? 'mb-0' : 'mb-2'} tracking-wider`}
+                      className={`font-jetbrains ${uiConfig.compactMode ? 'mb-0' : 'mb-2'} tracking-wider`}
                       style={{ 
-                        fontSize: `${config.timeFontSize}px`,
-                        fontWeight: config.fontWeight,
-                        color: config.accentColor
+                        fontSize: `${uiConfig.timeFontSize}px`,
+                        fontWeight: uiConfig.fontWeight,
+                        color: uiConfig.accentColor
                       }}
                     >
                       {formatTime(clock.timezone)}
                     </div>
-                    {!config.compactMode && (
+                    {!uiConfig.compactMode && (
                       <>
                         <div 
                           className="text-sm font-light"
-                          style={{ color: config.secondaryTextColor }}
+                          style={{ color: uiConfig.secondaryTextColor }}
                         >
                           {formatDate(clock.timezone)}
                         </div>
                         {hasEnhancedTimeDisplay && (
                           <div 
                             className="text-xs font-medium mt-1"
-                            style={{ color: config.accentColor }}
+                            style={{ color: uiConfig.accentColor }}
                           >
                             {getRelativeTime(clock.timezone)}
                           </div>
@@ -668,19 +652,19 @@ const WorldClockDashboard = () => {
                     )}
                   </div>
                   
-                  {!config.compactMode && (
+                  {!uiConfig.compactMode && (
                     <div className="flex-shrink-0 flex items-center justify-center h-full">
                       <AnalogClock timezone={clock.timezone} />
                     </div>
                   )}
                 </div>
                 
-                {clocks.length > 1 && config.compactMode && (
+                {clocks.length > 1 && uiConfig.compactMode && (
                   <button
                     onClick={() => removeClock(clock.id)}
                     className="text-red-400 hover:text-red-300"
                     style={{
-                      transition: `all ${config.animationSpeed}ms ease-in-out`
+                      transition: `all ${uiConfig.animationSpeed}ms ease-in-out`
                     }}
                   >
                     <X className="w-5 h-5" />
@@ -694,7 +678,7 @@ const WorldClockDashboard = () => {
         {/* Footer */}
         <div 
           className="text-center mt-12 text-sm font-light"
-          style={{ color: config.secondaryTextColor }}
+          style={{ color: uiConfig.secondaryTextColor }}
         >
           <p>Times update automatically every second</p>
         </div>
@@ -712,30 +696,20 @@ const WorldClockDashboard = () => {
   );
 };
 
-function generateUserID() {
-  let userID = localStorage.getItem('world_clock_user_id');
-  
-  if (!userID || userID === 'a-user') {
-    userID = 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-    localStorage.setItem('world_clock_user_id', userID);
-  }
-  
-  return userID;
-}
-
-
 function App() {
-  const userID = generateUserID(); // ← Add this line
+  // STATSIG - Initialize Statsig client with unique user ID and plugins
+  const userID = generateUserID();
   
   const { client, isLoading } = useClientAsyncInit(
     "client-1jKRKqgQNUDG6QY5wHhX2pFDELaEnSUFWw8vB879CBN",
-    { userID: userID }, // ← Change this line
+    { userID: userID },
     {
       plugins: [new StatsigAutoCapturePlugin(), new StatsigSessionReplayPlugin()],
     }
   );
 
-  if (isLoading || !client) {
+  // Show loading state while Statsig initializes
+  if (isLoading || !client) { // STATSIG - isLoading from useClientAsyncInit
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
         <div className="text-white text-xl">Loading...</div>
@@ -744,6 +718,7 @@ function App() {
   }
 
   return (
+    // STATSIG - StatsigProvider wrapper
     <StatsigProvider client={client}>
       <WorldClockDashboard />
     </StatsigProvider>
