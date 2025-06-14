@@ -10,12 +10,6 @@ fontLink.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500
 fontLink.rel = 'stylesheet';
 document.head.appendChild(fontLink);
 
-// Feature gates (simulating Statsig feature flags)
-const FEATURE_GATES = {
-  HOUR_FORMAT_TOGGLE: true,
-  SECONDS_TOGGLE: true
-};
-
 // Available time zones
 const TIME_ZONES = [
   { label: 'New York', value: 'America/New_York' },
@@ -57,6 +51,27 @@ const WorldClockDashboard = () => {
 
     return () => clearInterval(interval);
   }, []);
+
+  // Handle clicking outside the search dropdown - ADD THIS
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showAddClock && !event.target.closest('.relative')) {
+        setShowAddClock(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showAddClock]);
+
+  // Track feature gate exposure - ADD THIS TOO
+  useEffect(() => {
+    if (client) {
+      client.logEvent("search_bar_gate_exposed", {
+        gate_value: client.checkGate("search_bar")
+      });
+    }
+  }, [client]);
 
   // Format time for a specific timezone
   const formatTime = (timezone) => {
@@ -267,41 +282,6 @@ const WorldClockDashboard = () => {
             </div>
             
             <div className="flex flex-wrap items-center gap-6">
-              {/* 24-hour toggle - Feature gated */}
-              {FEATURE_GATES.HOUR_FORMAT_TOGGLE && (
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <span className="text-white text-sm font-medium">24-hour format</span>
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={is24Hour}
-                      onChange={toggle24Hour}
-                      className="sr-only"
-                    />
-                    <div className={`w-12 h-6 rounded-full transition-colors ${is24Hour ? 'bg-purple-500' : 'bg-gray-600'}`}>
-                      <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${is24Hour ? 'translate-x-6' : 'translate-x-0.5'} mt-0.5`} />
-                    </div>
-                  </div>
-                </label>
-              )}
-
-              {/* Seconds toggle - Feature gated */}
-              {FEATURE_GATES.SECONDS_TOGGLE && (
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <span className="text-white text-sm font-medium">Show seconds</span>
-                  <div className="relative">
-                    <input
-                      type="checkbox"
-                      checked={showSeconds}
-                      onChange={toggleSeconds}
-                      className="sr-only"
-                    />
-                    <div className={`w-12 h-6 rounded-full transition-colors ${showSeconds ? 'bg-purple-500' : 'bg-gray-600'}`}>
-                      <div className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform ${showSeconds ? 'translate-x-6' : 'translate-x-0.5'} mt-0.5`} />
-                    </div>
-                  </div>
-                </label>
-              )}
 
               {/* Add Clock Button */}
               <button
@@ -314,43 +294,96 @@ const WorldClockDashboard = () => {
             </div>
           </div>
 
-          {/* Add Clock Form */}
-          {showAddClock && (
-            <div className="mt-4 pt-4 border-t border-white/20">
+          {/* Add Clock Section - with feature gate */}
+          <div className="mt-4 pt-4 border-t border-white/20">
+            {client.checkGate("search_bar") ? (
+              // Show searchable timezone input when gate is enabled
               <div className="flex flex-wrap gap-3 items-end">
-                <div className="flex-1 min-w-48">
-                  <label className="block text-white text-sm mb-2 font-medium">Select Time Zone</label>
-                  <select
-                    value={selectedTimezone}
-                    onChange={(e) => setSelectedTimezone(e.target.value)}
-                    className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-inter"
-                  >
-                    <option value="">Choose a city...</option>
-                    {TIME_ZONES.map((tz) => (
-                      <option key={tz.value} value={tz.value} className="bg-gray-800">
-                        {tz.label}
-                      </option>
-                    ))}
-                  </select>
+                <div className="flex-1 min-w-[200px]">
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Search & Add Timezone
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={selectedTimezone}
+                      onChange={(e) => setSelectedTimezone(e.target.value)}
+                      onFocus={() => setShowAddClock(true)}
+                      placeholder="Type to search timezones..."
+                      className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                    {showAddClock && selectedTimezone && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white/10 backdrop-blur-lg border border-white/20 rounded-lg max-h-48 overflow-y-auto z-10">
+                        {TIME_ZONES
+                          .filter(zone => 
+                            zone.label.toLowerCase().includes(selectedTimezone.toLowerCase()) ||
+                            zone.value.toLowerCase().includes(selectedTimezone.toLowerCase())
+                          )
+                          .slice(0, 8)
+                          .map(zone => (
+                            <button
+                              key={zone.value}
+                              onClick={() => {
+                                setSelectedTimezone(zone.value);
+                                setShowAddClock(false);
+                                setTimeout(() => {
+                                  addClock();
+                                  setSelectedTimezone('');
+                                }, 100);
+                              }}
+                              className="w-full text-left px-3 py-2 text-white hover:bg-white/20 transition-colors border-b border-white/10 last:border-b-0"
+                            >
+                              <div className="font-medium">{zone.label}</div>
+                              <div className="text-sm text-gray-400">{zone.value}</div>
+                            </button>
+                          ))}
+                        {TIME_ZONES.filter(zone => 
+                          zone.label.toLowerCase().includes(selectedTimezone.toLowerCase()) ||
+                          zone.value.toLowerCase().includes(selectedTimezone.toLowerCase())
+                        ).length === 0 && (
+                          <div className="px-3 py-2 text-gray-400">No timezones found</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <button
-                  onClick={addClock}
-                  disabled={!selectedTimezone}
+                  onClick={() => {
+                    addClock();
+                    setSelectedTimezone('');
+                    setShowAddClock(false);
+                  }}
+                  disabled={!selectedTimezone || !TIME_ZONES.find(tz => tz.value === selectedTimezone)}
                   className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors font-medium"
                 >
                   Add
                 </button>
-                <button
-                  onClick={() => setShowAddClock(false)}
-                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors font-medium"
-                >
-                  Cancel
-                </button>
               </div>
-            </div>
-          )}
-        </div>
-
+  ) : (
+    // Show simple preset buttons when gate is disabled
+    <div className="flex flex-wrap gap-2">
+      <p className="text-white text-sm mb-2 w-full">Quick Add Popular Cities:</p>
+      {['Paris', 'Sydney', 'Dubai', 'Mumbai'].map(city => {
+        const timezone = TIME_ZONES.find(tz => tz.label === city);
+        return (
+          <button
+            key={city}
+            onClick={() => {
+              setSelectedTimezone(timezone.value);
+              setTimeout(() => {
+                addClock();
+                setSelectedTimezone('');
+              }, 0);
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors"
+          >
+            Add {city}
+          </button>
+        );
+      })}
+    </div>
+  )}
+</div>
         {/* Clock Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {clocks.map((clock) => (
