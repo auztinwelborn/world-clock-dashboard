@@ -10,9 +10,9 @@
     "lucide-react": "^0.300.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "@statsig/react-bindings": "^1.20.1",
-    "@statsig/session-replay": "^1.1.15",
-    "@statsig/web-analytics": "^0.1.7"
+    "@statsig/react-bindings": "3.18.0",
+    "@statsig/web-analytics": "3.18.0",
+    "@statsig/session-replay": "3.18.0"
   },
   "devDependencies": {
     "vite": "^4.5.0",
