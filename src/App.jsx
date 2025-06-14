@@ -224,11 +224,16 @@ const WorldClockDashboard = () => {
   // Toggle 24-hour format
   const toggle24Hour = () => {
     console.log("Toggle function called!");
+    console.log("Client object:", client);
     setIs24Hour(prev => !prev);
     
-    console.log("About to call client.logEvent");
-    client.logEvent("time_format_toggled");
-    console.log("logEvent completed");
+    if (client && client.logEvent) {
+      console.log("About to call client.logEvent");
+      client.logEvent("time_format_toggled");
+      console.log("logEvent completed");
+    } else {
+      console.error("Client or logEvent not available:", client);
+    }
   };
 
   // Toggle seconds display
