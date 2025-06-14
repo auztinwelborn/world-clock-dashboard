@@ -442,7 +442,7 @@ const WorldClockDashboard = () => {
       `}</style>
     </div>
   );
-};
+}
 
 function App() {
   const { client, isLoading } = useClientAsyncInit(
