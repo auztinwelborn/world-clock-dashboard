@@ -388,27 +388,41 @@ const WorldClockDashboard = () => {
                 </button>
               </div>
             ) : (
-              // Show simple preset buttons when gate is disabled
-              <div className="flex flex-wrap gap-2">
-                <p className="text-white text-sm mb-2 w-full">Quick Add Popular Cities:</p>
-                {['Paris', 'Sydney', 'Dubai', 'Mumbai'].map(city => {
-                  const timezone = TIME_ZONES.find(tz => tz.label === city);
-                  return (
-                    <button
-                      key={city}
-                      onClick={() => {
-                        setSelectedTimezone(timezone.value);
-                        setTimeout(() => {
-                          addClock();
-                          setSelectedTimezone('');
-                        }, 0);
-                      }}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors"
-                    >
-                      Add {city}
-                    </button>
-                  );
-                })}
+              // Show dropdown selector when gate is disabled
+              <div className="flex flex-wrap gap-3 items-end">
+                <div className="flex-1 min-w-[200px]">
+                  <label className="block text-sm font-medium text-white mb-2">
+                    Select Timezone
+                  </label>
+                  <select
+                    value={selectedTimezone}
+                    onChange={(e) => setSelectedTimezone(e.target.value)}
+                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  >
+                    <option value="" className="bg-slate-800 text-white">Choose a city...</option>
+                    {TIME_ZONES.map(zone => (
+                      <option key={zone.value} value={zone.value} className="bg-slate-800 text-white">
+                        {zone.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={() => {
+                    addClock();
+                    setSelectedTimezone('');
+                  }}
+                  disabled={!selectedTimezone}
+                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors font-medium"
+                >
+                  Add
+                </button>
+                <button
+                  onClick={() => setSelectedTimezone('')}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors font-medium"
+                >
+                  Cancel
+                </button>
               </div>
             )}
           </div>
