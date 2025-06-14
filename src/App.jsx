@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, X, Clock, Settings } from 'lucide-react';
-import { StatsigProvider, useClientAsyncInit } from "@statsig/react-bindings";
+import { StatsigProvider, useClientAsyncInit, useStatsigClient } from "@statsig/react-bindings";
 import { StatsigAutoCapturePlugin } from "@statsig/web-analytics";
 import { StatsigSessionReplayPlugin } from "@statsig/session-replay";
 
@@ -42,7 +42,7 @@ const WorldClockDashboard = () => {
     { id: 2, label: 'London', timezone: 'Europe/London' },
     { id: 3, label: 'Tokyo', timezone: 'Asia/Tokyo' }
   ]);
-
+  const { client } = useStatsigClient();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [is24Hour, setIs24Hour] = useState(false);
   const [showSeconds, setShowSeconds] = useState(true);
@@ -206,12 +206,9 @@ const WorldClockDashboard = () => {
     setSelectedTimezone('');
     setShowAddClock(false);
 
-    // TODO: Log custom event - Clock Added
-    // Analytics.track('clock_added', { 
-    //   timezone: selectedTz.value, 
-    //   label: selectedTz.label,
-    //   total_clocks: clocks.length + 1
-    // });
+    console.log("About to log clock_added event");
+    client.logEvent("clock_added");
+    console.log("clock_added event logged");
   };
 
   // Remove a clock
@@ -219,32 +216,29 @@ const WorldClockDashboard = () => {
     const clockToRemove = clocks.find(clock => clock.id === id);
     setClocks(prev => prev.filter(clock => clock.id !== id));
 
-    // TODO: Log custom event - Clock Removed
-    // Analytics.track('clock_removed', { 
-    //   timezone: clockToRemove?.timezone, 
-    //   label: clockToRemove?.label,
-    //   total_clocks: clocks.length - 1
-    // });
+    console.log("About to log clock_removed event");
+    client.logEvent("clock_removed");
+    console.log("clock_removed event logged");
   };
 
   // Toggle 24-hour format
   const toggle24Hour = () => {
+    console.log("Toggle function called!");
     setIs24Hour(prev => !prev);
     
-    // TODO: Log custom event - Format Toggle
-    // Analytics.track('time_format_toggled', { 
-    //   format: !is24Hour ? '24_hour' : '12_hour'
-    // });
+    console.log("About to call client.logEvent");
+    client.logEvent("time_format_toggled");
+    console.log("logEvent completed");
   };
 
   // Toggle seconds display
   const toggleSeconds = () => {
+    console.log("Toggle seconds function called!");
     setShowSeconds(prev => !prev);
     
-    // TODO: Log custom event - Seconds Toggle
-    // Analytics.track('seconds_display_toggled', { 
-    //   show_seconds: !showSeconds
-    // });
+    console.log("About to log seconds_display_toggled event");
+    client.logEvent("seconds_display_toggled");
+    console.log("seconds_display_toggled event logged");
   };
 
   return (
