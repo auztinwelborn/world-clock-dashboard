@@ -52,7 +52,7 @@ const WorldClockDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Handle clicking outside the search dropdown - ADD THIS
+  // Handle clicking outside the search dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (showAddClock && !event.target.closest('.relative')) {
@@ -64,7 +64,7 @@ const WorldClockDashboard = () => {
     return () => document.removeEventListener('click', handleClickOutside);
   }, [showAddClock]);
 
-  // Track feature gate exposure - ADD THIS TOO
+  // Track feature gate exposure
   useEffect(() => {
     if (client) {
       client.logEvent("search_bar_gate_exposed", {
@@ -221,9 +221,11 @@ const WorldClockDashboard = () => {
     setSelectedTimezone('');
     setShowAddClock(false);
 
-    console.log("About to log clock_added event");
-    client.logEvent("clock_added");
-    console.log("clock_added event logged");
+    if (client) {
+      console.log("About to log clock_added event");
+      client.logEvent("clock_added");
+      console.log("clock_added event logged");
+    }
   };
 
   // Remove a clock
@@ -231,9 +233,11 @@ const WorldClockDashboard = () => {
     const clockToRemove = clocks.find(clock => clock.id === id);
     setClocks(prev => prev.filter(clock => clock.id !== id));
 
-    console.log("About to log clock_removed event");
-    client.logEvent("clock_removed");
-    console.log("clock_removed event logged");
+    if (client) {
+      console.log("About to log clock_removed event");
+      client.logEvent("clock_removed");
+      console.log("clock_removed event logged");
+    }
   };
 
   // Toggle 24-hour format
@@ -256,9 +260,11 @@ const WorldClockDashboard = () => {
     console.log("Toggle seconds function called!");
     setShowSeconds(prev => !prev);
     
-    console.log("About to log seconds_display_toggled event");
-    client.logEvent("seconds_display_toggled");
-    console.log("seconds_display_toggled event logged");
+    if (client) {
+      console.log("About to log seconds_display_toggled event");
+      client.logEvent("seconds_display_toggled");
+      console.log("seconds_display_toggled event logged");
+    }
   };
 
   return (
@@ -282,6 +288,28 @@ const WorldClockDashboard = () => {
             </div>
             
             <div className="flex flex-wrap items-center gap-6">
+              {/* Format Controls */}
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 text-white">
+                  <input
+                    type="checkbox"
+                    checked={is24Hour}
+                    onChange={toggle24Hour}
+                    className="rounded"
+                  />
+                  24-hour format
+                </label>
+                
+                <label className="flex items-center gap-2 text-white">
+                  <input
+                    type="checkbox"
+                    checked={showSeconds}
+                    onChange={toggleSeconds}
+                    className="rounded"
+                  />
+                  Show seconds
+                </label>
+              </div>
 
               {/* Add Clock Button */}
               <button
@@ -296,7 +324,7 @@ const WorldClockDashboard = () => {
 
           {/* Add Clock Section - with feature gate */}
           <div className="mt-4 pt-4 border-t border-white/20">
-            {client.checkGate("search_bar") ? (
+            {client && client.checkGate("search_bar") ? (
               // Show searchable timezone input when gate is enabled
               <div className="flex flex-wrap gap-3 items-end">
                 <div className="flex-1 min-w-[200px]">
@@ -359,31 +387,33 @@ const WorldClockDashboard = () => {
                   Add
                 </button>
               </div>
-  ) : (
-    // Show simple preset buttons when gate is disabled
-    <div className="flex flex-wrap gap-2">
-      <p className="text-white text-sm mb-2 w-full">Quick Add Popular Cities:</p>
-      {['Paris', 'Sydney', 'Dubai', 'Mumbai'].map(city => {
-        const timezone = TIME_ZONES.find(tz => tz.label === city);
-        return (
-          <button
-            key={city}
-            onClick={() => {
-              setSelectedTimezone(timezone.value);
-              setTimeout(() => {
-                addClock();
-                setSelectedTimezone('');
-              }, 0);
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors"
-          >
-            Add {city}
-          </button>
-        );
-      })}
-    </div>
-  )}
-</div>
+            ) : (
+              // Show simple preset buttons when gate is disabled
+              <div className="flex flex-wrap gap-2">
+                <p className="text-white text-sm mb-2 w-full">Quick Add Popular Cities:</p>
+                {['Paris', 'Sydney', 'Dubai', 'Mumbai'].map(city => {
+                  const timezone = TIME_ZONES.find(tz => tz.label === city);
+                  return (
+                    <button
+                      key={city}
+                      onClick={() => {
+                        setSelectedTimezone(timezone.value);
+                        setTimeout(() => {
+                          addClock();
+                          setSelectedTimezone('');
+                        }, 0);
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors"
+                    >
+                      Add {city}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Clock Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {clocks.map((clock) => (
@@ -442,7 +472,7 @@ const WorldClockDashboard = () => {
       `}</style>
     </div>
   );
-}
+};
 
 function App() {
   const { client, isLoading } = useClientAsyncInit(
