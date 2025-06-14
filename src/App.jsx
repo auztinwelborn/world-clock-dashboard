@@ -494,10 +494,23 @@ const WorldClockDashboard = () => {
                               onClick={() => {
                                 setSelectedTimezone(zone.value);
                                 setShowAddClock(false);
-                                setTimeout(() => {
-                                  addClock();
-                                  setSelectedTimezone('');
-                                }, 100);
+                                
+                                // Add the clock immediately with the selected timezone
+                                const selectedTz = TIME_ZONES.find(tz => tz.value === zone.value);
+                                if (selectedTz && !clocks.some(clock => clock.timezone === zone.value)) {
+                                  const newClock = {
+                                    id: Date.now(),
+                                    label: selectedTz.label,
+                                    timezone: selectedTz.value
+                                  };
+                                  setClocks(prev => [...prev, newClock]);
+                                  
+                                  if (client) {
+                                    client.logEvent("clock_added"); // STATSIG - client.logEvent()
+                                  }
+                                }
+                                
+                                setSelectedTimezone('');
                               }}
                               className="w-full text-left px-3 py-2 hover:bg-white/20 border-b border-white/10 last:border-b-0"
                               style={{
