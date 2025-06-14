@@ -65,12 +65,12 @@ const WorldClockDashboard = () => {
   const getThemeClasses = () => {
     if (isDarkTheme) {
       return {
-        background: "bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900",
+        background: "bg-gradient-to-br from-black via-gray-900 to-black",
         cardBg: "bg-white/5",
-        accentColor: "text-blue-400",
+        accentColor: "text-gray-300",
         primaryText: "text-white",
-        secondaryText: "text-blue-200",
-        buttonColor: "bg-blue-600 hover:bg-blue-700"
+        secondaryText: "text-gray-400",
+        buttonColor: "bg-gray-700 hover:bg-gray-600"
       };
     }
     return {
