@@ -44,7 +44,7 @@ const WorldClockDashboard = () => {
   const [showAddClock, setShowAddClock] = useState(false);
 
   // DYNAMIC CONFIG - All UI variables controlled by Statsig, NOT code
-  const uiConfig = client ? client.getConfig("ui_settings") : null;
+  const uiConfig = client ? client.getDynamicConfig("ui_settings") : null;
   
   // Get ALL styling from Statsig Dynamic Config (NO hardcoded values)
   const config = {
