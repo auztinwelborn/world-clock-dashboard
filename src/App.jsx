@@ -712,10 +712,23 @@ const WorldClockDashboard = () => {
   );
 };
 
+function generateUserID() {
+  let userID = localStorage.getItem('world_clock_user_id');
+  
+  if (!userID) {
+    userID = 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+    localStorage.setItem('world_clock_user_id', userID);
+  }
+  
+  return userID;
+}
+
 function App() {
+  const userID = generateUserID(); // ← Add this line
+  
   const { client, isLoading } = useClientAsyncInit(
     "client-1jKRKqgQNUDG6QY5wHhX2pFDELaEnSUFWw8vB879CBN",
-    { userID: "a-user" },
+    { userID: userID }, // ← Change this line
     {
       plugins: [new StatsigAutoCapturePlugin(), new StatsigSessionReplayPlugin()],
     }
