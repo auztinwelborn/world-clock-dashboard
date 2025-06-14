@@ -43,6 +43,46 @@ const WorldClockDashboard = () => {
   const [selectedTimezone, setSelectedTimezone] = useState('');
   const [showAddClock, setShowAddClock] = useState(false);
 
+  // GET DYNAMIC CONFIG VALUES
+  const uiConfig = client ? client.getConfig("ui_theme_config") : null;
+  
+  // Extract config values with fallbacks
+  const themeConfig = {
+    // Background gradient colors
+    primaryBg: uiConfig?.get("primary_bg_color", "slate-900") || "slate-900",
+    secondaryBg: uiConfig?.get("secondary_bg_color", "purple-900") || "purple-900",
+    
+    // Card styling
+    cardOpacity: uiConfig?.get("card_opacity", 10) || 10,
+    borderRadius: uiConfig?.get("border_radius", "2xl") || "2xl",
+    
+    // Colors
+    accentColor: uiConfig?.get("accent_color", "purple-400") || "purple-400",
+    textPrimary: uiConfig?.get("text_primary_color", "white") || "white",
+    textSecondary: uiConfig?.get("text_secondary_color", "purple-200") || "purple-200",
+    
+    // Animation
+    animationDuration: uiConfig?.get("animation_duration", 300) || 300,
+    hoverOpacity: uiConfig?.get("hover_opacity", 15) || 15,
+    
+    // Typography
+    fontSize: uiConfig?.get("time_font_size", "4xl") || "4xl",
+    fontWeight: uiConfig?.get("time_font_weight", "semibold") || "semibold"
+  };
+
+  // Log config exposure for analytics
+  useEffect(() => {
+    if (client && uiConfig) {
+      client.logEvent("ui_config_loaded", {
+        config_values: {
+          primary_bg: themeConfig.primaryBg,
+          accent_color: themeConfig.accentColor,
+          animation_duration: themeConfig.animationDuration
+        }
+      });
+    }
+  }, [client, uiConfig]);
+
   // Update time every second
   useEffect(() => {
     const interval = setInterval(() => {
@@ -268,29 +308,43 @@ const WorldClockDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4 font-inter">
+    <div 
+      className={`min-h-screen bg-gradient-to-br from-${themeConfig.primaryBg} via-${themeConfig.secondaryBg} to-${themeConfig.primaryBg} p-4 font-inter`}
+      style={{
+        transition: `all ${themeConfig.animationDuration}ms ease-in-out`
+      }}
+    >
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <Clock className="w-10 h-10 text-purple-400" />
-            <h1 className="text-4xl font-bold text-white tracking-tight">World Clock Dashboard</h1>
+            <Clock className={`w-10 h-10 text-${themeConfig.accentColor}`} />
+            <h1 className={`text-4xl font-bold text-${themeConfig.textPrimary} tracking-tight`}>
+              World Clock Dashboard
+            </h1>
           </div>
-          <p className="text-purple-200 font-light">Keep track of time across the globe</p>
+          <p className={`text-${themeConfig.textSecondary} font-light`}>
+            Keep track of time across the globe
+          </p>
         </div>
 
         {/* Controls */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-8 border border-white/20">
+        <div 
+          className={`bg-white/${themeConfig.cardOpacity} backdrop-blur-lg rounded-${themeConfig.borderRadius} p-6 mb-8 border border-white/20`}
+          style={{
+            transition: `all ${themeConfig.animationDuration}ms ease-in-out`
+          }}
+        >
           <div className="flex flex-wrap items-center gap-4 justify-between">
             <div className="flex items-center gap-2">
-              <Settings className="w-5 h-5 text-purple-300" />
-              <span className="text-white font-medium">Settings</span>
+              <Settings className={`w-5 h-5 text-${themeConfig.accentColor.replace('-400', '-300')}`} />
+              <span className={`text-${themeConfig.textPrimary} font-medium`}>Settings</span>
             </div>
             
             <div className="flex flex-wrap items-center gap-6">
               {/* Format Controls */}
               <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 text-white">
+                <label className={`flex items-center gap-2 text-${themeConfig.textPrimary}`}>
                   <input
                     type="checkbox"
                     checked={is24Hour}
@@ -300,7 +354,7 @@ const WorldClockDashboard = () => {
                   24-hour format
                 </label>
                 
-                <label className="flex items-center gap-2 text-white">
+                <label className={`flex items-center gap-2 text-${themeConfig.textPrimary}`}>
                   <input
                     type="checkbox"
                     checked={showSeconds}
@@ -314,7 +368,10 @@ const WorldClockDashboard = () => {
               {/* Add Clock Button */}
               <button
                 onClick={() => setShowAddClock(!showAddClock)}
-                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors font-medium"
+                className={`flex items-center gap-2 bg-${themeConfig.accentColor.replace('-400', '-600')} hover:bg-${themeConfig.accentColor.replace('-400', '-700')} text-white px-4 py-2 rounded-lg font-medium`}
+                style={{
+                  transition: `all ${themeConfig.animationDuration}ms ease-in-out`
+                }}
               >
                 <Plus className="w-4 h-4" />
                 Add Clock
@@ -328,7 +385,7 @@ const WorldClockDashboard = () => {
               // Show searchable timezone input when gate is enabled
               <div className="flex flex-wrap gap-3 items-end">
                 <div className="flex-1 min-w-[200px]">
-                  <label className="block text-sm font-medium text-white mb-2">
+                  <label className={`block text-sm font-medium text-${themeConfig.textPrimary} mb-2`}>
                     Search & Add Timezone
                   </label>
                   <div className="relative">
@@ -338,10 +395,13 @@ const WorldClockDashboard = () => {
                       onChange={(e) => setSelectedTimezone(e.target.value)}
                       onFocus={() => setShowAddClock(true)}
                       placeholder="Type to search timezones..."
-                      className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className={`w-full bg-white/${themeConfig.cardOpacity} border border-white/20 rounded-lg px-3 py-2 text-${themeConfig.textPrimary} placeholder-gray-400 focus:ring-2 focus:ring-${themeConfig.accentColor.replace('-400', '-500')} focus:border-transparent`}
+                      style={{
+                        transition: `all ${themeConfig.animationDuration}ms ease-in-out`
+                      }}
                     />
                     {showAddClock && selectedTimezone && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-white/10 backdrop-blur-lg border border-white/20 rounded-lg max-h-48 overflow-y-auto z-10">
+                      <div className={`absolute top-full left-0 right-0 mt-1 bg-white/${themeConfig.cardOpacity} backdrop-blur-lg border border-white/20 rounded-lg max-h-48 overflow-y-auto z-10`}>
                         {TIME_ZONES
                           .filter(zone => 
                             zone.label.toLowerCase().includes(selectedTimezone.toLowerCase()) ||
@@ -359,7 +419,10 @@ const WorldClockDashboard = () => {
                                   setSelectedTimezone('');
                                 }, 100);
                               }}
-                              className="w-full text-left px-3 py-2 text-white hover:bg-white/20 transition-colors border-b border-white/10 last:border-b-0"
+                              className={`w-full text-left px-3 py-2 text-${themeConfig.textPrimary} hover:bg-white/${themeConfig.hoverOpacity} border-b border-white/10 last:border-b-0`}
+                              style={{
+                                transition: `all ${themeConfig.animationDuration}ms ease-in-out`
+                              }}
                             >
                               <div className="font-medium">{zone.label}</div>
                               <div className="text-sm text-gray-400">{zone.value}</div>
@@ -382,7 +445,10 @@ const WorldClockDashboard = () => {
                     setShowAddClock(false);
                   }}
                   disabled={!selectedTimezone || !TIME_ZONES.find(tz => tz.value === selectedTimezone)}
-                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors font-medium"
+                  className={`bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium`}
+                  style={{
+                    transition: `all ${themeConfig.animationDuration}ms ease-in-out`
+                  }}
                 >
                   Add
                 </button>
@@ -391,13 +457,16 @@ const WorldClockDashboard = () => {
               // Show dropdown selector when gate is disabled
               <div className="flex flex-wrap gap-3 items-end">
                 <div className="flex-1 min-w-[200px]">
-                  <label className="block text-sm font-medium text-white mb-2">
+                  <label className={`block text-sm font-medium text-${themeConfig.textPrimary} mb-2`}>
                     Select Timezone
                   </label>
                   <select
                     value={selectedTimezone}
                     onChange={(e) => setSelectedTimezone(e.target.value)}
-                    className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className={`w-full bg-white/${themeConfig.cardOpacity} border border-white/20 rounded-lg px-3 py-2 text-${themeConfig.textPrimary} focus:ring-2 focus:ring-${themeConfig.accentColor.replace('-400', '-500')} focus:border-transparent`}
+                    style={{
+                      transition: `all ${themeConfig.animationDuration}ms ease-in-out`
+                    }}
                   >
                     <option value="" className="bg-slate-800 text-white">Choose a city...</option>
                     {TIME_ZONES.map(zone => (
@@ -413,13 +482,19 @@ const WorldClockDashboard = () => {
                     setSelectedTimezone('');
                   }}
                   disabled={!selectedTimezone}
-                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors font-medium"
+                  className={`bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium`}
+                  style={{
+                    transition: `all ${themeConfig.animationDuration}ms ease-in-out`
+                  }}
                 >
                   Add
                 </button>
                 <button
                   onClick={() => setSelectedTimezone('')}
-                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors font-medium"
+                  className={`bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium`}
+                  style={{
+                    transition: `all ${themeConfig.animationDuration}ms ease-in-out`
+                  }}
                 >
                   Cancel
                 </button>
@@ -433,14 +508,22 @@ const WorldClockDashboard = () => {
           {clocks.map((clock) => (
             <div
               key={clock.id}
-              className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300 group"
+              className={`bg-white/${themeConfig.cardOpacity} backdrop-blur-lg rounded-${themeConfig.borderRadius} p-6 border border-white/20 hover:bg-white/${themeConfig.hoverOpacity} group`}
+              style={{
+                transition: `all ${themeConfig.animationDuration}ms ease-in-out`
+              }}
             >
               <div className="flex justify-between items-start mb-4">
-                <h3 className="text-xl font-semibold text-white tracking-wide">{clock.label}</h3>
+                <h3 className={`text-xl font-semibold text-${themeConfig.textPrimary} tracking-wide`}>
+                  {clock.label}
+                </h3>
                 {clocks.length > 1 && (
                   <button
                     onClick={() => removeClock(clock.id)}
-                    className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100"
+                    style={{
+                      transition: `all ${themeConfig.animationDuration}ms ease-in-out`
+                    }}
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -451,10 +534,12 @@ const WorldClockDashboard = () => {
                 <div className="flex items-center justify-between gap-6">
                   {/* Digital Time */}
                   <div className="flex-1">
-                    <div className="text-4xl font-jetbrains font-semibold text-purple-300 mb-2 tracking-wider">
+                    <div 
+                      className={`text-${themeConfig.fontSize} font-jetbrains font-${themeConfig.fontWeight} text-${themeConfig.accentColor.replace('-400', '-300')} mb-2 tracking-wider`}
+                    >
                       {formatTime(clock.timezone)}
                     </div>
-                    <div className="text-sm text-purple-200 font-light">
+                    <div className={`text-sm text-${themeConfig.textSecondary} font-light`}>
                       {formatDate(clock.timezone)}
                     </div>
                   </div>
@@ -470,7 +555,7 @@ const WorldClockDashboard = () => {
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-12 text-purple-300 text-sm font-light">
+        <div className={`text-center mt-12 text-${themeConfig.textSecondary} text-sm font-light`}>
           <p>Times update automatically every second</p>
         </div>
       </div>
