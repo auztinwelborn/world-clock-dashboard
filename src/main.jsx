@@ -7,7 +7,7 @@ import { StatsigSessionReplayPlugin } from "@statsig/session-replay";
 function App() {
   const { client } = useClientAsyncInit(
     "client-1jKRKqgQNUDG6QY5wHhX2pFDELaEnSUFWw8vB879CBN",
-    { userID: "a-user" } 
+    { userID: "a-user" }, // <-- ✅ comma added here
     {
       plugins: [new StatsigAutoCapturePlugin(), new StatsigSessionReplayPlugin()],
     }
