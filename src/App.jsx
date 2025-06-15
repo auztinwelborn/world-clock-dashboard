@@ -6,18 +6,6 @@ import { StatsigProvider, useClientAsyncInit, useStatsigClient } from "@statsig/
 import { StatsigAutoCapturePlugin } from "@statsig/web-analytics";
 import { StatsigSessionReplayPlugin } from "@statsig/session-replay";
 
-// Generate unique user ID for proper A/B testing across devices
-function generateUserID() {
-  let userID = localStorage.getItem('world_clock_user_id');
-  
-  if (!userID || userID === 'a-user') {
-    userID = 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-    localStorage.setItem('world_clock_user_id', userID);
-  }
-  
-  return userID;
-}
-
 // Import Google Fonts
 const fontLink = document.createElement('link');
 fontLink.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap';
@@ -59,33 +47,34 @@ const WorldClockDashboard = () => {
   const [showAddClock, setShowAddClock] = useState(false);
 
   // STATSIG - Check feature gates for A/B testing
-  const isDarkTheme = client ? client.checkGate("dark_theme") : false;
-  const isCompactLayout = client ? client.checkGate("compact_layout") : false;
-  const hasSmoothAnimations = client ? client.checkGate("smooth_animations") : false;
-  const hasEnhancedTimeDisplay = client ? client.checkGate("enhanced_time_display") : false;
+  const isDarkTheme = client.checkGate("dark_theme");
+  const isCompactLayout = client.checkGate("compact_layout");
+  const hasSmoothAnimations = client.checkGate("smooth_animations");
+  const hasEnhancedTimeDisplay = client.checkGate("enhanced_time_display");
+  const hasSearchBar = client.checkGate("search_bar");
 
   // STATSIG - Get dynamic config for styling values
-  const config = client ? client.getDynamicConfig("ui_settings") : null;
+  const config = client.getDynamicConfig("ui_settings");
   
   // Get theme-specific values based on Feature Gates + Dynamic Config
   const getThemeConfig = () => {
     if (isDarkTheme) {
       // Dark theme variant - get dark-specific values from Dynamic Config
       return {
-        backgroundColor: config?.get("dark_background_color", "#000000"), // STATSIG - config.get()
-        gradientColor: config?.get("dark_gradient_color", "#1a1a1a"), // STATSIG - config.get()
-        accentColor: config?.get("dark_accent_color", "#9ca3af"), // STATSIG - config.get()
-        textColor: config?.get("dark_text_color", "#ffffff"), // STATSIG - config.get()
-        secondaryTextColor: config?.get("dark_secondary_text_color", "#cccccc"), // STATSIG - config.get()
+        backgroundColor: config.get("dark_background_color", "#000000"), // STATSIG - config.get()
+        gradientColor: config.get("dark_gradient_color", "#1a1a1a"), // STATSIG - config.get()
+        accentColor: config.get("dark_accent_color", "#9ca3af"), // STATSIG - config.get()
+        textColor: config.get("dark_text_color", "#ffffff"), // STATSIG - config.get()
+        secondaryTextColor: config.get("dark_secondary_text_color", "#cccccc"), // STATSIG - config.get()
       };
     } else {
       // Light theme variant - get light-specific values from Dynamic Config
       return {
-        backgroundColor: config?.get("light_background_color", "#0f172a"), // STATSIG - config.get()
-        gradientColor: config?.get("light_gradient_color", "#581c87"), // STATSIG - config.get()
-        accentColor: config?.get("light_accent_color", "#a855f7"), // STATSIG - config.get()
-        textColor: config?.get("light_text_color", "#ffffff"), // STATSIG - config.get()
-        secondaryTextColor: config?.get("light_secondary_text_color", "#c4b5fd"), // STATSIG - config.get()
+        backgroundColor: config.get("light_background_color", "#0f172a"), // STATSIG - config.get()
+        gradientColor: config.get("light_gradient_color", "#581c87"), // STATSIG - config.get()
+        accentColor: config.get("light_accent_color", "#a855f7"), // STATSIG - config.get()
+        textColor: config.get("light_text_color", "#ffffff"), // STATSIG - config.get()
+        secondaryTextColor: config.get("light_secondary_text_color", "#c4b5fd"), // STATSIG - config.get()
       };
     }
   };
@@ -98,33 +87,31 @@ const WorldClockDashboard = () => {
     ...themeConfig,
     
     // Shared styling (controlled by Dynamic Config only)
-    cardBackgroundColor: config?.get("card_background_color", "rgba(255,255,255,0.1)"), // STATSIG - config.get()
-    headerFontSize: config?.get("header_font_size", 36), // STATSIG - config.get()
+    cardBackgroundColor: config.get("card_background_color", "rgba(255,255,255,0.1)"), // STATSIG - config.get()
+    headerFontSize: config.get("header_font_size", 36), // STATSIG - config.get()
     timeFontSize: hasEnhancedTimeDisplay 
-      ? config?.get("enhanced_time_font_size", 48) // STATSIG - config.get()
-      : config?.get("standard_time_font_size", 36), // STATSIG - config.get()
-    fontWeight: config?.get("font_weight", 600), // STATSIG - config.get()
-    borderRadius: config?.get("border_radius", 16), // STATSIG - config.get()
+      ? config.get("enhanced_time_font_size", 48) // STATSIG - config.get()
+      : config.get("standard_time_font_size", 36), // STATSIG - config.get()
+    fontWeight: config.get("font_weight", 600), // STATSIG - config.get()
+    borderRadius: config.get("border_radius", 16), // STATSIG - config.get()
     
     // Animation speed (Feature Gate decides which speed, Dynamic Config provides values)
     animationSpeed: hasSmoothAnimations 
-      ? config?.get("smooth_animation_speed", 500) // STATSIG - config.get()
-      : config?.get("standard_animation_speed", 300), // STATSIG - config.get()
+      ? config.get("smooth_animation_speed", 500) // STATSIG - config.get()
+      : config.get("standard_animation_speed", 300), // STATSIG - config.get()
     
     // Layout (Feature Gate decides mode, Dynamic Config provides grid settings)
-    gridColumns: config?.get("grid_columns", 3), // STATSIG - config.get()
-    cardPadding: config?.get("card_padding", 24), // STATSIG - config.get()
+    gridColumns: config.get("grid_columns", 3), // STATSIG - config.get()
+    cardPadding: config.get("card_padding", 24), // STATSIG - config.get()
     compactMode: isCompactLayout, // Feature Gate controls this directly
     
     // Content (Dynamic Config only)
-    appTitle: config?.get("app_title", "World Clock Dashboard"), // STATSIG - config.get()
-    appSubtitle: config?.get("app_subtitle", "Keep track of time across the globe"), // STATSIG - config.get()
+    appTitle: config.get("app_title", "World Clock Dashboard"), // STATSIG - config.get()
+    appSubtitle: config.get("app_subtitle", "Keep track of time across the globe"), // STATSIG - config.get()
     
     // Feature toggles (Dynamic Config only)
-    showAnalogClocks: config?.get("show_analog_clocks", true), // STATSIG - config.get()
+    showAnalogClocks: config.get("show_analog_clocks", true), // STATSIG - config.get()
   };
-
-
 
   // Update time every second
   useEffect(() => {
@@ -146,8 +133,6 @@ const WorldClockDashboard = () => {
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, [showAddClock]);
-
-
 
   // Format time for a specific timezone
   const formatTime = (timezone) => {
@@ -203,7 +188,7 @@ const WorldClockDashboard = () => {
 
   // Analog Clock Component
   const AnalogClock = ({ timezone }) => {
-    if (!config.showAnalogClocks) return null;
+    if (!uiConfig.showAnalogClocks) return null;
     
     const { hourAngle, minuteAngle, secondAngle } = getTimeComponents(timezone);
     
@@ -254,7 +239,7 @@ const WorldClockDashboard = () => {
             y1="50"
             x2={50 + Math.cos((minuteAngle - 90) * Math.PI / 180) * 35}
             y2={50 + Math.sin((minuteAngle - 90) * Math.PI / 180) * 35}
-            stroke={config.accentColor}
+            stroke={uiConfig.accentColor}
             strokeWidth="2"
             strokeLinecap="round"
           />
@@ -304,36 +289,35 @@ const WorldClockDashboard = () => {
     setSelectedTimezone('');
     setShowAddClock(false);
 
-    if (client) {
-      client.logEvent("clock_added"); // STATSIG - client.logEvent()
-    }
+    client.logEvent("clock_added", selectedTz.value, { // STATSIG - client.logEvent()
+      timezone: selectedTz.value,
+      label: selectedTz.label,
+      total_clocks: clocks.length + 1
+    });
   };
 
   // Remove a clock
   const removeClock = (id) => {
     setClocks(prev => prev.filter(clock => clock.id !== id));
 
-    if (client) {
-      client.logEvent("clock_removed"); // STATSIG - client.logEvent()
-    }
+    client.logEvent("clock_removed", "SKU_12345", { // STATSIG - client.logEvent()
+      clock_id: id,
+      remaining_clocks: clocks.length - 1
+    });
   };
 
   // Toggle 24-hour format
   const toggle24Hour = () => {
     setIs24Hour(prev => !prev);
     
-    if (client) {
-      client.logEvent("time_format_toggled"); // STATSIG - client.logEvent()
-    }
+    client.logEvent("time_format_toggled"); // STATSIG - client.logEvent()
   };
 
   // Toggle seconds display
   const toggleSeconds = () => {
     setShowSeconds(prev => !prev);
     
-    if (client) {
-      client.logEvent("seconds_display_toggled"); // STATSIG - client.logEvent()
-    }
+    client.logEvent("seconds_display_toggled"); // STATSIG - client.logEvent()
   };
 
   return (
@@ -450,7 +434,7 @@ const WorldClockDashboard = () => {
 
           {/* Add Clock Section - search_bar feature gate */}
           <div className="mt-4 pt-4 border-t border-white/20">
-            {client && client.checkGate("search_bar") ? ( // STATSIG - client.checkGate()
+            {hasSearchBar ? ( // STATSIG - client.checkGate()
               <div className="flex flex-wrap gap-3 items-end">
                 <div className="flex-1 min-w-[200px]">
                   <label 
@@ -505,9 +489,11 @@ const WorldClockDashboard = () => {
                                   };
                                   setClocks(prev => [...prev, newClock]);
                                   
-                                  if (client) {
-                                    client.logEvent("clock_added"); // STATSIG - client.logEvent()
-                                  }
+                                  client.logEvent("clock_added", selectedTz.value, { // STATSIG - client.logEvent()
+                                    timezone: selectedTz.value,
+                                    label: selectedTz.label,
+                                    total_clocks: clocks.length + 1
+                                  });
                                 }
                                 
                                 setSelectedTimezone('');
@@ -527,11 +513,7 @@ const WorldClockDashboard = () => {
                   </div>
                 </div>
                 <button
-                  onClick={() => {
-                    addClock();
-                    setSelectedTimezone('');
-                    setShowAddClock(false);
-                  }}
+                  onClick={() => client.logEvent("button_click")} // STATSIG - client.logEvent()
                   disabled={!selectedTimezone || !TIME_ZONES.find(tz => tz.value === selectedTimezone)}
                   className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 font-medium"
                   style={{
@@ -710,29 +692,14 @@ const WorldClockDashboard = () => {
 };
 
 function App() {
-  // STATSIG - Initialize Statsig client with unique user ID and plugins
-  const userID = generateUserID();
-  
-  const { client, isLoading } = useClientAsyncInit(
+  const { client } = useClientAsyncInit( // STATSIG - useClientAsyncInit
     "client-1jKRKqgQNUDG6QY5wHhX2pFDELaEnSUFWw8vB879CBN",
-    { userID: userID },
-    {
-      plugins: [new StatsigAutoCapturePlugin(), new StatsigSessionReplayPlugin()],
-    }
+    { userID: 'a-user' }, 
+    { plugins: [ new StatsigAutoCapturePlugin(), new StatsigSessionReplayPlugin() ] }, // STATSIG - plugins
   );
 
-  // Show loading state while Statsig initializes
-  if (isLoading || !client) { // STATSIG - isLoading from useClientAsyncInit
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
-      </div>
-    );
-  }
-
   return (
-    // STATSIG - StatsigProvider wrapper
-    <StatsigProvider client={client}>
+    <StatsigProvider client={client} loadingComponent={<div>Loading...</div>}> {/* STATSIG - StatsigProvider */}
       <WorldClockDashboard />
     </StatsigProvider>
   );
