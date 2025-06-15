@@ -59,58 +59,54 @@ const WorldClockDashboard = () => {
   // Get theme-specific values based on Feature Gates + Dynamic Config
   const getThemeConfig = () => {
     if (isDarkTheme) {
-      // Dark theme variant - get dark-specific values from Dynamic Config
+      // Dark theme variant - only accent color is configurable
       return {
-        backgroundColor: config.get("dark_background_color", "#000000"), // STATSIG - config.get()
-        gradientColor: config.get("dark_gradient_color", "#1a1a1a"), // STATSIG - config.get()
+        backgroundColor: "#000000",
+        gradientColor: "#1a1a1a",
         accentColor: config.get("dark_accent_color", "#9ca3af"), // STATSIG - config.get()
-        textColor: config.get("dark_text_color", "#ffffff"), // STATSIG - config.get()
-        secondaryTextColor: config.get("dark_secondary_text_color", "#cccccc"), // STATSIG - config.get()
+        textColor: "#ffffff",
+        secondaryTextColor: "#cccccc",
       };
     } else {
-      // Light theme variant - get light-specific values from Dynamic Config
+      // Light theme variant - only accent color is configurable
       return {
-        backgroundColor: config.get("light_background_color", "#0f172a"), // STATSIG - config.get()
-        gradientColor: config.get("light_gradient_color", "#581c87"), // STATSIG - config.get()
+        backgroundColor: "#0f172a",
+        gradientColor: "#581c87",
         accentColor: config.get("light_accent_color", "#a855f7"), // STATSIG - config.get()
-        textColor: config.get("light_text_color", "#ffffff"), // STATSIG - config.get()
-        secondaryTextColor: config.get("light_secondary_text_color", "#c4b5fd"), // STATSIG - config.get()
+        textColor: "#ffffff",
+        secondaryTextColor: "#c4b5fd",
       };
     }
   };
 
   const themeConfig = getThemeConfig();
 
-  // Get ALL styling - combines Feature Gates + Dynamic Config
+  // Get ALL styling - combines Feature Gates + hardcoded values (only specific items configurable)
   const uiConfig = {
-    // Theme colors (Feature Gate decides which set, Dynamic Config provides values)
+    // Theme colors (Feature Gate decides which set, accent color configurable via Dynamic Config)
     ...themeConfig,
     
-    // Shared styling (controlled by Dynamic Config only)
-    cardBackgroundColor: config.get("card_background_color", "rgba(255,255,255,0.1)"), // STATSIG - config.get()
-    headerFontSize: config.get("header_font_size", 36), // STATSIG - config.get()
-    timeFontSize: hasEnhancedTimeDisplay 
-      ? config.get("enhanced_time_font_size", 48) // STATSIG - config.get()
-      : config.get("standard_time_font_size", 36), // STATSIG - config.get()
-    fontWeight: config.get("font_weight", 600), // STATSIG - config.get()
-    borderRadius: config.get("border_radius", 16), // STATSIG - config.get()
+    // Shared styling (hardcoded values)
+    cardBackgroundColor: "rgba(255,255,255,0.1)",
+    headerFontSize: 36,
+    timeFontSize: hasEnhancedTimeDisplay ? 48 : 36,
+    fontWeight: 600,
+    borderRadius: 16,
     
-    // Animation speed (Feature Gate decides which speed, Dynamic Config provides values)
-    animationSpeed: hasSmoothAnimations 
-      ? config.get("smooth_animation_speed", 500) // STATSIG - config.get()
-      : config.get("standard_animation_speed", 300), // STATSIG - config.get()
+    // Animation speed (Feature Gate decides which speed, hardcoded values)
+    animationSpeed: hasSmoothAnimations ? 500 : 300,
     
-    // Layout (Feature Gate decides mode, Dynamic Config provides grid settings)
-    gridColumns: config.get("grid_columns", 3), // STATSIG - config.get()
-    cardPadding: config.get("card_padding", 24), // STATSIG - config.get()
+    // Layout (Feature Gate decides mode, hardcoded grid settings)
+    gridColumns: 3,
+    cardPadding: 24,
     compactMode: isCompactLayout, // Feature Gate controls this directly
     
-    // Content (Dynamic Config only)
+    // Content (Dynamic Config only for these specific items)
     appTitle: config.get("app_title", "World Clock Dashboard"), // STATSIG - config.get()
     appSubtitle: config.get("app_subtitle", "Keep track of time across the globe"), // STATSIG - config.get()
     
-    // Feature toggles (Dynamic Config only)
-    showAnalogClocks: config.get("show_analog_clocks", true), // STATSIG - config.get()
+    // Feature toggles (hardcoded)
+    showAnalogClocks: true,
   };
 
   // Update time every second
@@ -308,9 +304,29 @@ const WorldClockDashboard = () => {
 
   // Toggle 24-hour format
   const toggle24Hour = () => {
-    setIs24Hour(prev => !prev);
+    const previousFormat = is24Hour;
+    const newFormat = !is24Hour;
     
-    client.logEvent("time_format_toggled"); // STATSIG - client.logEvent()
+    setIs24Hour(newFormat);
+    
+    // Enhanced event logging for 24-hour toggle
+    client.logEvent("time_format_toggled", newFormat ? "24_hour" : "12_hour", {
+      previous_format: previousFormat ? "24_hour" : "12_hour",
+      new_format: newFormat ? "24_hour" : "12_hour",
+      total_clocks: clocks.length,
+      active_timezones: clocks.map(clock => clock.timezone),
+      is_compact_layout: isCompactLayout,
+      has_enhanced_display: hasEnhancedTimeDisplay,
+      shows_seconds: showSeconds,
+      timestamp: new Date().toISOString(),
+      feature_flags: {
+        dark_theme: isDarkTheme,
+        compact_layout: isCompactLayout,
+        smooth_animations: hasSmoothAnimations,
+        enhanced_time_display: hasEnhancedTimeDisplay,
+        search_bar: hasSearchBar
+      }
+    });
   };
 
   // Toggle seconds display
