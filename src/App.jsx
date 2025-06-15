@@ -53,16 +53,14 @@ const WorldClockDashboard = () => {
   const hasEnhancedTimeDisplay = client.checkGate("enhanced_time_display");
   const hasSearchBar = client.checkGate("search_bar");
 
-  // STATSIG - Get dynamic config for banner content (trying multiple possible names)
-  const bannerConfig = client.getDynamicConfig("banner_config");
-  const upsellBannerConfig = client.getDynamicConfig("upsell_banner");
+  // STATSIG - Get dynamic config for banner content
+  const bannerConfig = client.getDynamicConfig("upsell_banner");
   
-  // Try both config names
-  const text = bannerConfig.get("text", null) || upsellBannerConfig.get("text", null); // STATSIG - bannerConfig.get()
-  const backgroundColor = bannerConfig.get("backgroundColor", "black") || upsellBannerConfig.get("backgroundColor", "black"); // STATSIG - bannerConfig.get()
-  const color = bannerConfig.get("color", "white") || upsellBannerConfig.get("color", "white"); // STATSIG - bannerConfig.get()
-  const fontSize = bannerConfig.get("fontSize", 14) || upsellBannerConfig.get("fontSize", 14); // STATSIG - bannerConfig.get()
-  const isCloseable = bannerConfig.get("isCloseable", true) || upsellBannerConfig.get("isCloseable", true); // STATSIG - bannerConfig.get()
+  const text = bannerConfig.get("text", null); // STATSIG - bannerConfig.get()
+  const backgroundColor = bannerConfig.get("backgroundColor", "black"); // STATSIG - bannerConfig.get()
+  const color = bannerConfig.get("color", "white"); // STATSIG - bannerConfig.get()
+  const fontSize = bannerConfig.get("fontSize", 14); // STATSIG - bannerConfig.get()
+  const isCloseable = bannerConfig.get("isCloseable", true); // STATSIG - bannerConfig.get()
 
   const [showBanner, setShowBanner] = useState(true);
 
@@ -139,29 +137,9 @@ const WorldClockDashboard = () => {
     };
   };
 
-  // Banner Component with DEBUG
+  // Banner Component
   const Banner = () => {
-    // DEBUG: Let's see what values we're getting
-    console.log("🔍 Banner Debug:", { 
-      text: text, 
-      backgroundColor: backgroundColor, 
-      color: color, 
-      fontSize: fontSize, 
-      isCloseable: isCloseable, 
-      showBanner: showBanner,
-      bannerConfig: bannerConfig,
-      upsellBannerConfig: upsellBannerConfig
-    });
-    
-    if (!text || !showBanner) {
-      console.log("❌ Banner not showing because:", { 
-        textMissing: !text, 
-        bannerHidden: !showBanner 
-      });
-      return null;
-    }
-    
-    console.log("✅ Banner should be showing!");
+    if (!text || !showBanner) return null;
     
     return (
       <div 
