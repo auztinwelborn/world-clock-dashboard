@@ -2,15 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Plus, X, Clock, Settings } from 'lucide-react';
 
 // STATSIG - Import Statsig React SDK and plugins for feature flags and analytics
+// STATSIG - Import Statsig React SDK and plugins for feature flags and analytics
 import { StatsigProvider, useClientAsyncInit, useStatsigClient } from "@statsig/react-bindings";
 import { StatsigAutoCapturePlugin } from "@statsig/web-analytics";
 import { StatsigSessionReplayPlugin } from "@statsig/session-replay";
-
-// Import Google Fonts
-const fontLink = document.createElement('link');
-fontLink.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap';
-fontLink.rel = 'stylesheet';
-document.head.appendChild(fontLink);
 
 // Available time zones
 const TIME_ZONES = [
@@ -31,6 +26,99 @@ const TIME_ZONES = [
   { label: 'Toronto', value: 'America/Toronto' }
 ];
 
+// Helper functions for analytics metadata
+const getOrCreateSessionId = () => {
+  let sessionId = sessionStorage.getItem('statsig_session_id');
+  if (!sessionId) {
+    sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    sessionStorage.setItem('statsig_session_id', sessionId);
+    sessionStorage.setItem('session_start_time', Date.now().toString());
+  }
+  return sessionId;
+};
+
+const getContinent = (timezone) => {
+  const continentMap = {
+    'America': 'North America',
+    'Europe': 'Europe', 
+    'Asia': 'Asia',
+    'Australia': 'Oceania',
+    'Africa': 'Africa',
+    'Atlantic': 'Atlantic',
+    'Pacific': 'Pacific'
+  };
+  
+  const continent = timezone.split('/')[0];
+  return continentMap[continent] || 'Unknown';
+};
+
+const getTimezoneOffset = (timezone) => {
+  const now = new Date();
+  const localOffset = now.getTimezoneOffset();
+  const targetTime = new Date(now.toLocaleString("en-US", {timeZone: timezone}));
+  const targetOffset = (now.getTime() - targetTime.getTime()) / (1000 * 60);
+  const hoursDiff = Math.round((targetOffset - localOffset) / 60);
+  return hoursDiff > 0 ? `+${hoursDiff}` : hoursDiff.toString();
+};
+
+const isBusinessHours = (timezone) => {
+  const time = new Date().toLocaleString("en-US", {timeZone: timezone});
+  const hour = new Date(time).getHours();
+  return hour >= 9 && hour <= 17;
+};
+
+const getDeviceInfo = () => {
+  return {
+    userAgent: navigator.userAgent,
+    language: navigator.language,
+    platform: navigator.platform,
+    screenWidth: window.screen.width,
+    screenHeight: window.screen.height,
+    windowWidth: window.innerWidth,
+    windowHeight: window.innerHeight,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    cookiesEnabled: navigator.cookieEnabled
+  };
+};
+
+// Clock tracking hook
+const useClockTracking = () => {
+  const [clockTimestamps, setClockTimestamps] = useState(new Map());
+  const [toggleCounts, setToggleCounts] = useState({
+    timeFormat: 0,
+    seconds: 0
+  });
+
+  const trackClockAdded = (clockId) => {
+    setClockTimestamps(prev => new Map(prev).set(clockId, Date.now()));
+  };
+
+  const getClockDuration = (clockId) => {
+    const addedTime = clockTimestamps.get(clockId);
+    return addedTime ? Date.now() - addedTime : 0;
+  };
+
+  const wasRecentlyAdded = (clockId, minutesThreshold = 5) => {
+    const duration = getClockDuration(clockId);
+    return duration < (minutesThreshold * 60 * 1000);
+  };
+
+  const incrementToggleCount = (type) => {
+    setToggleCounts(prev => ({
+      ...prev,
+      [type]: prev[type] + 1
+    }));
+  };
+
+  return {
+    trackClockAdded,
+    getClockDuration,
+    wasRecentlyAdded,
+    toggleCounts,
+    incrementToggleCount
+  };
+};
+
 const WorldClockDashboard = () => {
   // Initial preset cities
   const [clocks, setClocks] = useState([
@@ -39,7 +127,15 @@ const WorldClockDashboard = () => {
     { id: 3, label: 'Tokyo', timezone: 'Asia/Tokyo' }
   ]);
   
-  const { client } = useStatsigClient(); // STATSIG - useStatsigClient hook
+  const { client } = useStatsigClient();
+  const { 
+    trackClockAdded, 
+    getClockDuration, 
+    wasRecentlyAdded, 
+    toggleCounts, 
+    incrementToggleCount 
+  } = useClockTracking();
+  
   const [currentTime, setCurrentTime] = useState(new Date());
   const [is24Hour, setIs24Hour] = useState(false);
   const [showSeconds, setShowSeconds] = useState(true);
@@ -56,11 +152,11 @@ const WorldClockDashboard = () => {
   // STATSIG - Get dynamic config for banner content
   const bannerConfig = client.getDynamicConfig("upsell_banner");
   
-  const text = bannerConfig.get("text", null); // STATSIG - bannerConfig.get()
-  const backgroundColor = bannerConfig.get("backgroundColor", "black"); // STATSIG - bannerConfig.get()
-  const color = bannerConfig.get("color", "white"); // STATSIG - bannerConfig.get()
-  const fontSize = bannerConfig.get("fontSize", 14); // STATSIG - bannerConfig.get()
-  const isCloseable = bannerConfig.get("isCloseable", true); // STATSIG - bannerConfig.get()
+  const text = bannerConfig.get("text", null);
+  const backgroundColor = bannerConfig.get("backgroundColor", "black");
+  const color = bannerConfig.get("color", "white");
+  const fontSize = bannerConfig.get("fontSize", 14);
+  const isCloseable = bannerConfig.get("isCloseable", true);
 
   const [showBanner, setShowBanner] = useState(true);
 
@@ -144,17 +240,17 @@ const WorldClockDashboard = () => {
     return (
       <div 
         style={{
-          backgroundColor: backgroundColor, // STATSIG - bannerConfig.get() value
-          color: color, // STATSIG - bannerConfig.get() value
-          fontSize: fontSize + "px", // STATSIG - bannerConfig.get() value
+          backgroundColor: backgroundColor,
+          color: color,
+          fontSize: fontSize + "px",
           padding: "12px 16px",
           textAlign: "center",
           position: "relative",
           zIndex: 1000
         }}
       >
-        <p style={{ margin: 0 }}>{text}</p> {/* STATSIG - bannerConfig.get() value */}
-        {isCloseable && ( // STATSIG - bannerConfig.get() value
+        <p style={{ margin: 0 }}>{text}</p>
+        {isCloseable && (
           <button
             onClick={() => setShowBanner(false)}
             style={{
@@ -274,38 +370,87 @@ const WorldClockDashboard = () => {
     };
 
     setClocks(prev => [...prev, newClock]);
+    trackClockAdded(newClock.id);
     setSelectedTimezone('');
     setShowAddClock(false);
 
-    client.logEvent("clock_added", selectedTz.value, { // STATSIG - client.logEvent()
+    // Collect device and session info for event metadata
+    const deviceInfo = getDeviceInfo();
+    
+    client.logEvent("clock_added", selectedTz.value, { // STATSIG
       timezone: selectedTz.value,
       label: selectedTz.label,
-      total_clocks: clocks.length + 1
+      total_clocks: clocks.length + 1,
+      add_method: hasSearchBar ? "search" : "dropdown",
+      search_query: hasSearchBar ? selectedTimezone : null,
+      user_session_id: getOrCreateSessionId(),
+      continent: getContinent(selectedTz.value),
+      is_business_hours: isBusinessHours(selectedTz.value),
+      time_offset_from_local: getTimezoneOffset(selectedTz.value),
+      user_language: deviceInfo.language,
+      user_timezone: deviceInfo.timezone,
+      screen_size: `${deviceInfo.screenWidth}x${deviceInfo.screenHeight}`,
+      timestamp: new Date().toISOString()
     });
   };
 
   // Remove a clock
   const removeClock = (id) => {
+    const clockToRemove = clocks.find(clock => clock.id === id);
+    const duration = getClockDuration(id);
+    
     setClocks(prev => prev.filter(clock => clock.id !== id));
 
-    client.logEvent("clock_removed", "SKU_12345", { // STATSIG - client.logEvent()
+    // Log removal event with collected metadata
+    client.logEvent("clock_removed", clockToRemove?.timezone || "unknown", { // STATSIG
       clock_id: id,
-      remaining_clocks: clocks.length - 1
+      timezone: clockToRemove?.timezone,
+      label: clockToRemove?.label,
+      remaining_clocks: clocks.length - 1,
+      time_on_dashboard_ms: duration,
+      time_on_dashboard_minutes: Math.round(duration / 60000),
+      removal_method: "button_click",
+      user_session_id: getOrCreateSessionId(),
+      was_recently_added: wasRecentlyAdded(id),
+      timestamp: new Date().toISOString()
     });
   };
 
   // Toggle 24-hour format
   const toggle24Hour = () => {
-    setIs24Hour(prev => !prev);
+    const newFormat = !is24Hour;
+    setIs24Hour(newFormat);
+    incrementToggleCount('timeFormat');
     
-    client.logEvent("time_format_toggled"); // STATSIG - client.logEvent()
+    const deviceInfo = getDeviceInfo();
+    
+    client.logEvent("time_format_toggled", newFormat ? "24h" : "12h", { // STATSIG
+      new_format: newFormat ? "24h" : "12h", 
+      previous_format: newFormat ? "12h" : "24h",
+      total_clocks_visible: clocks.length,
+      user_session_id: getOrCreateSessionId(),
+      device_locale: deviceInfo.language,
+      user_timezone: deviceInfo.timezone,
+      toggle_count_in_session: toggleCounts.timeFormat + 1,
+      timestamp: new Date().toISOString()
+    });
   };
 
   // Toggle seconds display
   const toggleSeconds = () => {
-    setShowSeconds(prev => !prev);
+    const newState = !showSeconds;
+    setShowSeconds(newState);
+    incrementToggleCount('seconds');
     
-    client.logEvent("seconds_display_toggled"); // STATSIG - client.logEvent()
+    client.logEvent("seconds_display_toggled", newState ? "enabled" : "disabled", {
+      new_state: newState ? "enabled" : "disabled",
+      previous_state: newState ? "disabled" : "enabled",
+      total_clocks_visible: clocks.length,
+      user_session_id: getOrCreateSessionId(),
+      current_time_format: is24Hour ? "24h" : "12h",
+      toggle_count_in_session: toggleCounts.seconds + 1,
+      timestamp: new Date().toISOString()
+    });
   };
 
   return (
@@ -428,7 +573,7 @@ const WorldClockDashboard = () => {
 
             {/* Add Clock Section - search_bar feature gate */}
             <div className="mt-4 pt-4 border-t border-white/20">
-              {hasSearchBar ? ( // STATSIG - client.checkGate()
+              {hasSearchBar ? (
                 <div className="flex flex-wrap gap-3 items-end">
                   <div className="flex-1 min-w-[200px]">
                     <label 
@@ -482,11 +627,24 @@ const WorldClockDashboard = () => {
                                       timezone: selectedTz.value
                                     };
                                     setClocks(prev => [...prev, newClock]);
+                                    trackClockAdded(newClock.id);
                                     
-                                    client.logEvent("clock_added", selectedTz.value, { // STATSIG - client.logEvent()
+                                    // STATSIG - Enhanced search-based add event
+                                    const deviceInfo = getDeviceInfo();
+                                    client.logEvent("clock_added", selectedTz.value, {
                                       timezone: selectedTz.value,
                                       label: selectedTz.label,
-                                      total_clocks: clocks.length + 1
+                                      total_clocks: clocks.length + 1,
+                                      add_method: "search",
+                                      search_query: selectedTimezone,
+                                      user_session_id: getOrCreateSessionId(),
+                                      continent: getContinent(selectedTz.value),
+                                      is_business_hours: isBusinessHours(selectedTz.value),
+                                      time_offset_from_local: getTimezoneOffset(selectedTz.value),
+                                      user_language: deviceInfo.language,
+                                      user_timezone: deviceInfo.timezone,
+                                      screen_size: `${deviceInfo.screenWidth}x${deviceInfo.screenHeight}`,
+                                      timestamp: new Date().toISOString()
                                     });
                                   }
                                   
@@ -507,7 +665,15 @@ const WorldClockDashboard = () => {
                     </div>
                   </div>
                   <button
-                    onClick={() => client.logEvent("button_click")} // STATSIG - client.logEvent()
+                    onClick={() => {
+                      const deviceInfo = getDeviceInfo();
+                      client.logEvent("button_click", "add_clock_search", {
+                        user_session_id: getOrCreateSessionId(),
+                        current_search_query: selectedTimezone,
+                        total_clocks: clocks.length,
+                        timestamp: new Date().toISOString()
+                      });
+                    }}
                     disabled={!selectedTimezone || !TIME_ZONES.find(tz => tz.value === selectedTimezone)}
                     className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 font-medium"
                     style={{
@@ -687,14 +853,14 @@ const WorldClockDashboard = () => {
 };
 
 function App() {
-  const { client } = useClientAsyncInit( // STATSIG - useClientAsyncInit
+  const { client } = useClientAsyncInit(
     "client-1jKRKqgQNUDG6QY5wHhX2pFDELaEnSUFWw8vB879CBN",
     { userID: 'a-user' }, 
-    { plugins: [ new StatsigAutoCapturePlugin(), new StatsigSessionReplayPlugin() ] }, // STATSIG - plugins
+    { plugins: [ new StatsigAutoCapturePlugin(), new StatsigSessionReplayPlugin() ] },
   );
 
   return (
-    <StatsigProvider client={client} loadingComponent={<div>Loading...</div>}> {/* STATSIG - StatsigProvider */}
+    <StatsigProvider client={client} loadingComponent={<div>Loading...</div>}>
       <WorldClockDashboard />
     </StatsigProvider>
   );
