@@ -37,6 +37,59 @@ const getOrCreateSessionId = () => {
   return sessionId;
 };
 
+// Generate user properties from browser
+const getUserProperties = () => {
+  // Get or create a persistent user ID
+  let userID = localStorage.getItem('world_clock_user_id');
+  if (!userID) {
+    userID = `user_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    localStorage.setItem('world_clock_user_id', userID);
+  }
+
+  // Get or create user email (optional - could be set by user later)
+  const userEmail = localStorage.getItem('world_clock_user_email') || null;
+
+  return {
+    userID: userID,
+    email: userEmail,
+    // Auto-detected browser properties
+    userAgent: navigator.userAgent,
+    locale: navigator.language,
+    country: Intl.DateTimeFormat().resolvedOptions().timeZone.split('/')[1] || 'Unknown',
+    // Custom properties for analytics
+    customIDs: {
+      sessionID: getOrCreateSessionId(),
+      deviceType: window.innerWidth < 768 ? 'mobile' : 'desktop',
+      browserName: getBrowserName(),
+      timezoneRegion: Intl.DateTimeFormat().resolvedOptions().timeZone.split('/')[0] || 'Unknown'
+    },
+    custom: {
+      screenResolution: `${window.screen.width}x${window.screen.height}`,
+      windowSize: `${window.innerWidth}x${window.innerHeight}`,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      platform: navigator.platform,
+      cookiesEnabled: navigator.cookieEnabled,
+      onlineStatus: navigator.onLine ? 'online' : 'offline',
+      firstVisit: !localStorage.getItem('world_clock_user_id') ? new Date().toISOString() : localStorage.getItem('world_clock_first_visit')
+    }
+  };
+};
+
+// Helper to detect browser name
+const getBrowserName = () => {
+  const userAgent = navigator.userAgent;
+  if (userAgent.includes('Chrome')) return 'Chrome';
+  if (userAgent.includes('Firefox')) return 'Firefox';
+  if (userAgent.includes('Safari')) return 'Safari';
+  if (userAgent.includes('Edge')) return 'Edge';
+  return 'Unknown';
+};
+
+// Store first visit timestamp
+if (!localStorage.getItem('world_clock_first_visit')) {
+  localStorage.setItem('world_clock_first_visit', new Date().toISOString());
+}
+
 const getContinent = (timezone) => {
   const continentMap = {
     'America': 'North America',
@@ -127,7 +180,7 @@ const WorldClockDashboard = () => {
     { id: 3, label: 'Tokyo', timezone: 'Asia/Tokyo' }
   ]);
   
-  const { client } = useStatsigClient();
+  const { client } = useStatsigClient(); // STATSIG - Get Statsig client instance
   const { 
     trackClockAdded, 
     getClockDuration, 
@@ -377,7 +430,7 @@ const WorldClockDashboard = () => {
     // Collect device and session info for event metadata
     const deviceInfo = getDeviceInfo();
     
-    client.logEvent("clock_added", selectedTz.value, { // STATSIG
+    client.logEvent("clock_added", selectedTz.value, { // STATSIG - Log clock addition event
       timezone: selectedTz.value,
       label: selectedTz.label,
       total_clocks: clocks.length + 1,
@@ -402,7 +455,7 @@ const WorldClockDashboard = () => {
     setClocks(prev => prev.filter(clock => clock.id !== id));
 
     // Log removal event with collected metadata
-    client.logEvent("clock_removed", clockToRemove?.timezone || "unknown", { // STATSIG
+    client.logEvent("clock_removed", clockToRemove?.timezone || "unknown", { // STATSIG - Log clock removal event
       clock_id: id,
       timezone: clockToRemove?.timezone,
       label: clockToRemove?.label,
@@ -424,7 +477,7 @@ const WorldClockDashboard = () => {
     
     const deviceInfo = getDeviceInfo();
     
-    client.logEvent("time_format_toggled", newFormat ? "24h" : "12h", { // STATSIG
+    client.logEvent("time_format_toggled", newFormat ? "24h" : "12h", { // STATSIG - Log time format toggle event
       new_format: newFormat ? "24h" : "12h", 
       previous_format: newFormat ? "12h" : "24h",
       total_clocks_visible: clocks.length,
@@ -442,7 +495,7 @@ const WorldClockDashboard = () => {
     setShowSeconds(newState);
     incrementToggleCount('seconds');
     
-    client.logEvent("seconds_display_toggled", newState ? "enabled" : "disabled", {
+    client.logEvent("seconds_display_toggled", newState ? "enabled" : "disabled", { // STATSIG - Log seconds display toggle event
       new_state: newState ? "enabled" : "disabled",
       previous_state: newState ? "disabled" : "enabled",
       total_clocks_visible: clocks.length,
@@ -464,7 +517,7 @@ const WorldClockDashboard = () => {
         transform: hasSmoothAnimations ? 'scale(1)' : 'none'
       }}
     >
-      {/* STATSIG - Dynamic Config Banner */}
+      {/* Dynamic Config Banner */}
       <Banner />
       
       <div className="p-4">
@@ -629,9 +682,9 @@ const WorldClockDashboard = () => {
                                     setClocks(prev => [...prev, newClock]);
                                     trackClockAdded(newClock.id);
                                     
-                                    // STATSIG - Enhanced search-based add event
+                                    // Log search-based add event with metadata
                                     const deviceInfo = getDeviceInfo();
-                                    client.logEvent("clock_added", selectedTz.value, {
+                                    client.logEvent("clock_added", selectedTz.value, { // STATSIG - Log search-based clock addition
                                       timezone: selectedTz.value,
                                       label: selectedTz.label,
                                       total_clocks: clocks.length + 1,
@@ -667,7 +720,7 @@ const WorldClockDashboard = () => {
                   <button
                     onClick={() => {
                       const deviceInfo = getDeviceInfo();
-                      client.logEvent("button_click", "add_clock_search", {
+                      client.logEvent("button_click", "add_clock_search", { // STATSIG - Log search button click
                         user_session_id: getOrCreateSessionId(),
                         current_search_query: selectedTimezone,
                         total_clocks: clocks.length,
