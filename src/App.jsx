@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, X, Clock, Settings } from 'lucide-react';
 
-// STATSIG - Import Statsig React SDK and plugins for feature flags and analytics
+// STATSIG - Import Statsig React SDK and plugins for feature flags and analytics - OBJECTIVE 1
 import { StatsigProvider, useClientAsyncInit, useStatsigClient } from "@statsig/react-bindings";
 import { StatsigAutoCapturePlugin } from "@statsig/web-analytics";
 import { StatsigSessionReplayPlugin } from "@statsig/session-replay";
@@ -36,7 +36,7 @@ const getOrCreateSessionId = () => {
   return sessionId;
 };
 
-// Generate user properties from browser
+// STATSIG - Generate user properties from browser
 const getUserProperties = () => {
   // Get or create a persistent user ID
   let userID = localStorage.getItem('world_clock_user_id');
@@ -194,18 +194,18 @@ const WorldClockDashboard = () => {
   const [selectedTimezone, setSelectedTimezone] = useState('');
   const [showAddClock, setShowAddClock] = useState(false);
 
-  // STATSIG - Check feature gates for A/B testing
+  // STATSIG - Check feature gates for A/B testing - OBJECTIVE 3
   const isDarkTheme = client.checkGate("dark_theme");
   const isCompactLayout = client.checkGate("compact_layout");
   const hasSmoothAnimations = client.checkGate("smooth_animations");
   const hasEnhancedTimeDisplay = client.checkGate("enhanced_time_display");
   const hasSearchBar = client.checkGate("search_bar");
 
-  // STATSIG - Get dynamic config for banner content
+  // STATSIG - Get dynamic config for banner content - OBJECTIVE 4
   const bannerConfig = client.getDynamicConfig("upsell_banner");
   
   const text = bannerConfig.get("text", null);
-  const backgroundColor = bannerConfig.get("backgroundColor", "black");
+  const backgroundColor = bannerConfig.get("backgroundColor", "#a855f7");
   const color = bannerConfig.get("color", "white");
   const fontSize = bannerConfig.get("fontSize", 14);
   const isCloseable = bannerConfig.get("isCloseable", true);
@@ -430,7 +430,7 @@ const WorldClockDashboard = () => {
     // 2. Track the successful action (keeping all your original rich metadata)
     const deviceInfo = getDeviceInfo();
     
-    client.logEvent("clock_added", selectedTz.value, { // STATSIG - Log clock addition event
+    client.logEvent("clock_added", selectedTz.value, { // STATSIG - Log clock addition event - OBJECTIVE 2
       timezone: selectedTz.value,
       label: selectedTz.label,
       total_clocks: clocks.length + 1,
@@ -455,7 +455,7 @@ const WorldClockDashboard = () => {
     setClocks(prev => prev.filter(clock => clock.id !== id));
 
     // Log removal event with collected metadata
-    client.logEvent("clock_removed", clockToRemove?.timezone || "unknown", { // STATSIG - Log clock removal event
+    client.logEvent("clock_removed", clockToRemove?.timezone || "unknown", { // STATSIG - Log clock removal event - OBJECTIVE 2
       clock_id: id,
       timezone: clockToRemove?.timezone,
       label: clockToRemove?.label,
@@ -477,7 +477,7 @@ const WorldClockDashboard = () => {
     
     const deviceInfo = getDeviceInfo();
     
-    client.logEvent("time_format_toggled", newFormat ? "24h" : "12h", { // STATSIG - Log time format toggle event
+    client.logEvent("time_format_toggled", newFormat ? "24h" : "12h", { // STATSIG - Log time format toggle event - OBJECTIVE 2
       new_format: newFormat ? "24h" : "12h", 
       previous_format: newFormat ? "12h" : "24h",
       total_clocks_visible: clocks.length,
@@ -495,7 +495,7 @@ const WorldClockDashboard = () => {
     setShowSeconds(newState);
     incrementToggleCount('seconds');
     
-    client.logEvent("seconds_display_toggled", newState ? "enabled" : "disabled", { // STATSIG - Log seconds display toggle event
+    client.logEvent("seconds_display_toggled", newState ? "enabled" : "disabled", { // STATSIG - Log seconds display toggle event - OBJECTIVE 2
       new_state: newState ? "enabled" : "disabled",
       previous_state: newState ? "disabled" : "enabled",
       total_clocks_visible: clocks.length,
@@ -848,11 +848,11 @@ const WorldClockDashboard = () => {
   );
 };
 
-// App component using user properties
+// STATSIG - App component using user properties - OBJECTIVE 2
 function App() {
   const { client } = useClientAsyncInit(
     "client-1jKRKqgQNUDG6QY5wHhX2pFDELaEnSUFWw8vB879CBN",
-    getUserProperties(), // Using your user properties function
+    getUserProperties(), // STATSIG - Using your user properties function
     { plugins: [ new StatsigAutoCapturePlugin(), new StatsigSessionReplayPlugin() ] },
   );
 
