@@ -36,7 +36,7 @@ const getOrCreateSessionId = () => {
   return sessionId;
 };
 
-// STATSIG - FIXED: Generate user properties following their documentation
+// Generate user properties from browser
 const getUserProperties = () => {
   // Get or create a persistent user ID
   let userID = localStorage.getItem('world_clock_user_id');
@@ -403,7 +403,7 @@ const WorldClockDashboard = () => {
     );
   };
 
-  // CONSOLIDATED: Single addClock function for all UI paths (same rich data as before)
+  // CONSOLIDATED: Single addClock function for all UI paths
   const addClock = (timezoneValue, addMethod = 'dropdown', searchQuery = '') => {
     if (!timezoneValue) return;
 
@@ -430,7 +430,7 @@ const WorldClockDashboard = () => {
     // 2. Track the successful action (keeping all your original rich metadata)
     const deviceInfo = getDeviceInfo();
     
-    client.logEvent("clock_added", selectedTz.value, { // STATSIG - Single consolidated event
+    client.logEvent("clock_added", selectedTz.value, { // STATSIG - Log clock addition event
       timezone: selectedTz.value,
       label: selectedTz.label,
       total_clocks: clocks.length + 1,
@@ -667,7 +667,7 @@ const WorldClockDashboard = () => {
                             .map(zone => (
                               <button
                                 key={zone.value}
-                                onClick={() => addClock(zone.value, 'search', selectedTimezone)} // CONSOLIDATED: Uses single addClock function
+                                onClick={() => addClock(zone.value, 'search', selectedTimezone)} // Uses single addClock function
                                 className="w-full text-left px-3 py-2 hover:bg-white/20 border-b border-white/10 last:border-b-0"
                                 style={{
                                   color: "#ffffff",
@@ -712,7 +712,7 @@ const WorldClockDashboard = () => {
                     </select>
                   </div>
                   <button
-                    onClick={() => addClock(selectedTimezone, 'dropdown')} // CONSOLIDATED: Uses single addClock function
+                    onClick={() => addClock(selectedTimezone, 'dropdown')} // Uses single addClock function
                     disabled={!selectedTimezone}
                     className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 font-medium"
                     style={{
@@ -848,11 +848,11 @@ const WorldClockDashboard = () => {
   );
 };
 
-// STATSIG - FIXED: App component now properly uses getUserProperties()
+// App component using user properties
 function App() {
   const { client } = useClientAsyncInit(
     "client-1jKRKqgQNUDG6QY5wHhX2pFDELaEnSUFWw8vB879CBN",
-    getUserProperties(), // FIXED: Now actually using your user properties function
+    getUserProperties(), // Using your user properties function
     { plugins: [ new StatsigAutoCapturePlugin(), new StatsigSessionReplayPlugin() ] },
   );
 
