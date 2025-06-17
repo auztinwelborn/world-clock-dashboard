@@ -546,7 +546,7 @@ const WorldClockDashboard = () => {
             </div>
             <p 
               className="font-light"
-              style={{ color: "##9ca3af" }}
+              style={{ color: "#9ca3af" }}
             >
               Keep track of time across the globe
             </p>
