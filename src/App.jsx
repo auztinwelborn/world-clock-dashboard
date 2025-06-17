@@ -528,7 +528,7 @@ const WorldClockDashboard = () => {
               <Clock 
                 className="w-10 h-10"
                 style={{ 
-                  color: "#a855f7",
+                  color: "#9ca3af",
                   transform: hasSmoothAnimations ? 'scale(1)' : 'none',
                   transition: `all ${hasSmoothAnimations ? 500 : 300}ms ease-in-out`
                 }}
@@ -567,7 +567,7 @@ const WorldClockDashboard = () => {
               <div className="flex items-center gap-2">
                 <Settings 
                   className="w-5 h-5"
-                  style={{ color: "#a855f7" }}
+                  style={{ color: "#9ca3af" }}
                 />
                 <span 
                   className="font-medium"
@@ -610,7 +610,7 @@ const WorldClockDashboard = () => {
                   onClick={() => setShowAddClock(!showAddClock)}
                   className="flex items-center gap-2 text-white px-4 py-2 rounded-lg font-medium"
                   style={{
-                    backgroundColor: "#a855f7",
+                    backgroundColor: "#6b7280",
                     borderRadius: "16px",
                     transition: `all ${hasSmoothAnimations ? 500 : 300}ms ease-in-out`,
                     transform: hasSmoothAnimations ? 'scale(1)' : 'none'
@@ -794,7 +794,7 @@ const WorldClockDashboard = () => {
                           {hasEnhancedTimeDisplay && (
                             <div 
                               className="text-xs font-medium mt-1"
-                              style={{ color: "#a855f7" }}
+                              style={{ color: "#9ca3af" }}
                             >
                               {getRelativeTime(clock.timezone)}
                             </div>
