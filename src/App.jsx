@@ -546,7 +546,7 @@ const WorldClockDashboard = () => {
             </div>
             <p 
               className="font-light"
-              style={{ color: "#c4b5fd" }}
+              style={{ color: "##9ca3af" }}
             >
               Keep track of time across the globe
             </p>
@@ -787,7 +787,7 @@ const WorldClockDashboard = () => {
                         <>
                           <div 
                             className="text-sm font-light"
-                            style={{ color: "#c4b5fd" }}
+                            style={{ color: "#9ca3af" }}
                           >
                             {formatDate(clock.timezone)}
                           </div>
@@ -829,7 +829,7 @@ const WorldClockDashboard = () => {
           {/* Footer */}
           <div 
             className="text-center mt-12 text-sm font-light"
-            style={{ color: "#c4b5fd" }}
+            style={{ color: "#9ca3af" }}
           >
             <p>Times update automatically every second</p>
           </div>
