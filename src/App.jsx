@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Plus, X, Clock, Settings } from 'lucide-react';
 
 // STATSIG - Import Statsig React SDK and plugins for feature flags and analytics
-// STATSIG - Import Statsig React SDK and plugins for feature flags and analytics
 import { StatsigProvider, useClientAsyncInit, useStatsigClient } from "@statsig/react-bindings";
 import { StatsigAutoCapturePlugin } from "@statsig/web-analytics";
 import { StatsigSessionReplayPlugin } from "@statsig/session-replay";
@@ -404,18 +403,19 @@ const WorldClockDashboard = () => {
     );
   };
 
-  // Add a new clock
-  const addClock = () => {
-    if (!selectedTimezone) return;
+  // CONSOLIDATED: Single addClock function for all UI paths
+  const addClock = (timezoneValue, addMethod = 'dropdown', searchQuery = '') => {
+    if (!timezoneValue) return;
 
-    const selectedTz = TIME_ZONES.find(tz => tz.value === selectedTimezone);
+    const selectedTz = TIME_ZONES.find(tz => tz.value === timezoneValue);
     if (!selectedTz) return;
 
-    if (clocks.some(clock => clock.timezone === selectedTimezone)) {
+    if (clocks.some(clock => clock.timezone === timezoneValue)) {
       alert('This clock already exists!');
       return;
     }
 
+    // 1. Execute business logic
     const newClock = {
       id: Date.now(),
       label: selectedTz.label,
@@ -427,15 +427,15 @@ const WorldClockDashboard = () => {
     setSelectedTimezone('');
     setShowAddClock(false);
 
-    // Collect device and session info for event metadata
+    // 2. Track the successful action
     const deviceInfo = getDeviceInfo();
     
-    client.logEvent("clock_added", selectedTz.value, { // STATSIG - Log clock addition event
+    client.logEvent("clock_added", selectedTz.value, { // STATSIG - Single consolidated event
       timezone: selectedTz.value,
       label: selectedTz.label,
       total_clocks: clocks.length + 1,
-      add_method: hasSearchBar ? "search" : "dropdown",
-      search_query: hasSearchBar ? selectedTimezone : null,
+      add_method: addMethod,
+      search_query: searchQuery || null,
       user_session_id: getOrCreateSessionId(),
       continent: getContinent(selectedTz.value),
       is_business_hours: isBusinessHours(selectedTz.value),
@@ -667,42 +667,7 @@ const WorldClockDashboard = () => {
                             .map(zone => (
                               <button
                                 key={zone.value}
-                                onClick={() => {
-                                  setSelectedTimezone(zone.value);
-                                  setShowAddClock(false);
-                                  
-                                  // Add the clock immediately with the selected timezone
-                                  const selectedTz = TIME_ZONES.find(tz => tz.value === zone.value);
-                                  if (selectedTz && !clocks.some(clock => clock.timezone === zone.value)) {
-                                    const newClock = {
-                                      id: Date.now(),
-                                      label: selectedTz.label,
-                                      timezone: selectedTz.value
-                                    };
-                                    setClocks(prev => [...prev, newClock]);
-                                    trackClockAdded(newClock.id);
-                                    
-                                    // Log search-based add event with metadata
-                                    const deviceInfo = getDeviceInfo();
-                                    client.logEvent("clock_added", selectedTz.value, { // STATSIG - Log search-based clock addition
-                                      timezone: selectedTz.value,
-                                      label: selectedTz.label,
-                                      total_clocks: clocks.length + 1,
-                                      add_method: "search",
-                                      search_query: selectedTimezone,
-                                      user_session_id: getOrCreateSessionId(),
-                                      continent: getContinent(selectedTz.value),
-                                      is_business_hours: isBusinessHours(selectedTz.value),
-                                      time_offset_from_local: getTimezoneOffset(selectedTz.value),
-                                      user_language: deviceInfo.language,
-                                      user_timezone: deviceInfo.timezone,
-                                      screen_size: `${deviceInfo.screenWidth}x${deviceInfo.screenHeight}`,
-                                      timestamp: new Date().toISOString()
-                                    });
-                                  }
-                                  
-                                  setSelectedTimezone('');
-                                }}
+                                onClick={() => addClock(zone.value, 'search', selectedTimezone)} // CONSOLIDATED: Uses single addClock function
                                 className="w-full text-left px-3 py-2 hover:bg-white/20 border-b border-white/10 last:border-b-0"
                                 style={{
                                   color: "#ffffff",
@@ -717,25 +682,6 @@ const WorldClockDashboard = () => {
                       )}
                     </div>
                   </div>
-                  <button
-                    onClick={() => {
-                      const deviceInfo = getDeviceInfo();
-                      client.logEvent("button_click", "add_clock_search", { // STATSIG - Log search button click
-                        user_session_id: getOrCreateSessionId(),
-                        current_search_query: selectedTimezone,
-                        total_clocks: clocks.length,
-                        timestamp: new Date().toISOString()
-                      });
-                    }}
-                    disabled={!selectedTimezone || !TIME_ZONES.find(tz => tz.value === selectedTimezone)}
-                    className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 font-medium"
-                    style={{
-                      borderRadius: "16px",
-                      transition: `all ${hasSmoothAnimations ? 500 : 300}ms ease-in-out`
-                    }}
-                  >
-                    Add
-                  </button>
                 </div>
               ) : (
                 <div className="flex flex-wrap gap-3 items-end">
@@ -766,10 +712,7 @@ const WorldClockDashboard = () => {
                     </select>
                   </div>
                   <button
-                    onClick={() => {
-                      addClock();
-                      setSelectedTimezone('');
-                    }}
+                    onClick={() => addClock(selectedTimezone, 'dropdown')} // CONSOLIDATED: Uses single addClock function
                     disabled={!selectedTimezone}
                     className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 font-medium"
                     style={{
