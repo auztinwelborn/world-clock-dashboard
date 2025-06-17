@@ -205,7 +205,7 @@ const WorldClockDashboard = () => {
   const bannerConfig = client.getDynamicConfig("upsell_banner");
   
   const text = bannerConfig.get("text", null);
-  const bannerBackgroundColor = bannerConfig.get("backgroundColor", "black");
+  const bannerBackgroundColor = bannerConfig.get("backgroundColor", "#a855f7");
   const bannerTextColor = bannerConfig.get("color", "white");
   const fontSize = bannerConfig.get("fontSize", 14);
   const isCloseable = bannerConfig.get("isCloseable", true);
