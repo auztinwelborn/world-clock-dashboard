@@ -778,7 +778,7 @@ const WorldClockDashboard = () => {
                         style={{ 
                           fontSize: `${hasEnhancedTimeDisplay ? 48 : 36}px`,
                           fontWeight: 600,
-                          color: "#a855f7"
+                          color: "#ffffff"
                         }}
                       >
                         {formatTime(clock.timezone)}
