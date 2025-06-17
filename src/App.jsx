@@ -205,8 +205,8 @@ const WorldClockDashboard = () => {
   const bannerConfig = client.getDynamicConfig("upsell_banner");
   
   const text = bannerConfig.get("text", null);
-  const backgroundColor = bannerConfig.get("backgroundColor", "#a855f7");
-  const color = bannerConfig.get("color", "white");
+  const bannerBackgroundColor = bannerConfig.get("backgroundColor", "black");
+  const bannerTextColor = bannerConfig.get("color", "white");
   const fontSize = bannerConfig.get("fontSize", 14);
   const isCloseable = bannerConfig.get("isCloseable", true);
 
@@ -292,8 +292,8 @@ const WorldClockDashboard = () => {
     return (
       <div 
         style={{
-          backgroundColor: backgroundColor,
-          color: color,
+          backgroundColor: bannerBackgroundColor,
+          color: bannerTextColor,
           fontSize: fontSize + "px",
           padding: "12px 16px",
           textAlign: "center",
@@ -312,7 +312,7 @@ const WorldClockDashboard = () => {
               transform: "translateY(-50%)",
               background: "none",
               border: "none",
-              color: color,
+              color: bannerTextColor,
               fontSize: "18px",
               cursor: "pointer"
             }}
