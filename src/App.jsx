@@ -36,7 +36,7 @@ const getOrCreateSessionId = () => {
   return sessionId;
 };
 
-// Generate user properties from browser
+// STATSIG - FIXED: Generate user properties following their documentation
 const getUserProperties = () => {
   // Get or create a persistent user ID
   let userID = localStorage.getItem('world_clock_user_id');
@@ -403,7 +403,7 @@ const WorldClockDashboard = () => {
     );
   };
 
-  // CONSOLIDATED: Single addClock function for all UI paths
+  // CONSOLIDATED: Single addClock function for all UI paths (same rich data as before)
   const addClock = (timezoneValue, addMethod = 'dropdown', searchQuery = '') => {
     if (!timezoneValue) return;
 
@@ -427,7 +427,7 @@ const WorldClockDashboard = () => {
     setSelectedTimezone('');
     setShowAddClock(false);
 
-    // 2. Track the successful action
+    // 2. Track the successful action (keeping all your original rich metadata)
     const deviceInfo = getDeviceInfo();
     
     client.logEvent("clock_added", selectedTz.value, { // STATSIG - Single consolidated event
@@ -848,10 +848,11 @@ const WorldClockDashboard = () => {
   );
 };
 
+// STATSIG - FIXED: App component now properly uses getUserProperties()
 function App() {
   const { client } = useClientAsyncInit(
     "client-1jKRKqgQNUDG6QY5wHhX2pFDELaEnSUFWw8vB879CBN",
-    { userID: 'a-user' }, 
+    getUserProperties(), // FIXED: Now actually using your user properties function
     { plugins: [ new StatsigAutoCapturePlugin(), new StatsigSessionReplayPlugin() ] },
   );
 
