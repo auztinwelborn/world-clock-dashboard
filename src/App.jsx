@@ -201,16 +201,10 @@ const WorldClockDashboard = () => {
   const hasEnhancedTimeDisplay = client.checkGate("enhanced_time_display");
   const hasSearchBar = client.checkGate("search_bar");
 
-  // STATSIG - Get dynamic config for banner content - OBJECTIVE 4
-  const bannerConfig = client.getDynamicConfig("upsell_banner");
+  // STATSIG - Check if user should see banner (feature gate for segmentation) - OBJECTIVE 4
+  const shouldShowBanner = client.checkGate("show_upsell_banner");
   
-  const text = bannerConfig.get("text", null);
-  const bannerBackgroundColor = bannerConfig.get("backgroundColor", "#a855f7");
-  const bannerTextColor = bannerConfig.get("color", "white");
-  const fontSize = bannerConfig.get("fontSize", 14);
-  const isCloseable = bannerConfig.get("isCloseable", true);
-
-  const [showBanner, setShowBanner] = useState(true);
+  // STATSIG - Get
 
   // Update time every second
   useEffect(() => {
@@ -287,32 +281,15 @@ const WorldClockDashboard = () => {
 
   // STATSIG - Handle upgrade button click with event tracking
   const handleUpgradeClick = () => {
-    const deviceInfo = getDeviceInfo();
-    
-    client.logEvent("upgrade_button_clicked", "premium", {
+    client.logEvent("upgrade_button_clicked", {
       button_location: "top_right_header",
       current_clocks_count: clocks.length,
       user_session_id: getOrCreateSessionId(),
-      page_view_duration_ms: Date.now() - parseInt(sessionStorage.getItem('session_start_time') || Date.now()),
-      current_settings: {
-        is_24hour: is24Hour,
-        show_seconds: showSeconds,
-        layout_compact: isCompactLayout,
-        theme_dark: isDarkTheme
-      },
-      feature_flags_active: {
-        dark_theme: isDarkTheme,
-        compact_layout: isCompactLayout,
-        smooth_animations: hasSmoothAnimations,
-        enhanced_time_display: hasEnhancedTimeDisplay,
-        search_bar: hasSearchBar
-      },
-      device_info: deviceInfo,
       timestamp: new Date().toISOString()
     });
 
-    // Simulate upgrade flow (you can replace this with actual upgrade logic)
-    alert('Upgrade to Premium! 🚀\n\n✨ Unlimited clocks\n⚡ Advanced themes\n📊 Analytics dashboard\n🌍 Weather integration');
+    // Simulate upgrade flow
+    alert('Upgrade to Premium! 🚀');
   };
 
   // Banner Component
@@ -337,7 +314,6 @@ const WorldClockDashboard = () => {
             onClick={() => {
               setShowBanner(false);
               client.logEvent("banner_closed", "upsell_banner", {
-                banner_text: text,
                 user_session_id: getOrCreateSessionId(),
                 timestamp: new Date().toISOString()
               });
