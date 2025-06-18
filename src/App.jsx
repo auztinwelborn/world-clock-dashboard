@@ -201,10 +201,16 @@ const WorldClockDashboard = () => {
   const hasEnhancedTimeDisplay = client.checkGate("enhanced_time_display");
   const hasSearchBar = client.checkGate("search_bar");
 
-  // STATSIG - Check if user should see banner (feature gate for segmentation) - OBJECTIVE 4
-  const shouldShowBanner = client.checkGate("show_upsell_banner");
+  // STATSIG - Get dynamic config for banner content - OBJECTIVE 4
+  const bannerConfig = client.getDynamicConfig("upsell_banner");
   
-  // STATSIG - Get
+  const text = bannerConfig.get("text", null);
+  const bannerBackgroundColor = bannerConfig.get("backgroundColor", "#a855f7");
+  const bannerTextColor = bannerConfig.get("color", "white");
+  const fontSize = bannerConfig.get("fontSize", 14);
+  const isCloseable = bannerConfig.get("isCloseable", true);
+
+  const [showBanner, setShowBanner] = useState(true);
 
   // Update time every second
   useEffect(() => {
