@@ -259,16 +259,34 @@ const WorldClockDashboard = () => {
     return new Intl.DateTimeFormat('en-US', options).format(currentTime);
   };
 
-  // Get relative time info for enhanced display
+  // Get relative time info for enhanced display - FIXED
   const getRelativeTime = (timezone) => {
     const now = new Date();
-    const localOffset = now.getTimezoneOffset();
-    const targetTime = new Date(now.toLocaleString("en-US", {timeZone: timezone}));
-    const targetOffset = (now.getTime() - targetTime.getTime()) / (1000 * 60);
-    const hoursDiff = Math.round((targetOffset - localOffset) / 60);
     
-    if (hoursDiff === 0) return "Same time";
-    return hoursDiff > 0 ? `+${hoursDiff}h ahead` : `${Math.abs(hoursDiff)}h behind`;
+    // Get current hour in local timezone
+    const localHour = now.getHours();
+    
+    // Get current hour in target timezone
+    const targetTime = new Date(now.toLocaleString("en-US", {timeZone: timezone}));
+    const targetHour = targetTime.getHours();
+    
+    // Calculate the raw difference
+    let diffInHours = targetHour - localHour;
+    
+    // Handle day boundary crossings
+    if (diffInHours > 12) {
+      diffInHours -= 24;
+    } else if (diffInHours < -12) {
+      diffInHours += 24;
+    }
+    
+    if (diffInHours === 0) return "Same time";
+    
+    if (diffInHours > 0) {
+      return `${diffInHours}h ahead`;
+    } else {
+      return `${Math.abs(diffInHours)}h behind`;
+    }
   };
 
   // Get time components for analog clock
