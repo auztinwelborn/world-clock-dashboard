@@ -285,7 +285,7 @@ const WorldClockDashboard = () => {
     };
   };
 
-  // STATSIG - Handle upgrade button click with event tracking
+  // STATSIG - Handle upgrade button click with event tracking - OBJECTIVE 2
   const handleUpgradeClick = () => {
     client.logEvent("upgrade_button_clicked", {
       button_location: "top_right_header",
@@ -901,7 +901,7 @@ const WorldClockDashboard = () => {
   );
 };
 
-// STATSIG - App component using user properties - OBJECTIVE 2
+// STATSIG - App component using user properties - OBJECTIVE 1
 function App() {
   const { client } = useClientAsyncInit(
     "client-1jKRKqgQNUDG6QY5wHhX2pFDELaEnSUFWw8vB879CBN",
