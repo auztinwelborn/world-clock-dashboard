@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Clock, Settings } from 'lucide-react';
+import { Plus, X, Clock, Settings, Crown, Sparkles } from 'lucide-react';
 
 // STATSIG - Import Statsig React SDK and plugins for feature flags and analytics - OBJECTIVE 1
 import { StatsigProvider, useClientAsyncInit, useStatsigClient } from "@statsig/react-bindings";
@@ -285,6 +285,36 @@ const WorldClockDashboard = () => {
     };
   };
 
+  // STATSIG - Handle upgrade button click with event tracking
+  const handleUpgradeClick = () => {
+    const deviceInfo = getDeviceInfo();
+    
+    client.logEvent("upgrade_button_clicked", "premium", {
+      button_location: "top_right_header",
+      current_clocks_count: clocks.length,
+      user_session_id: getOrCreateSessionId(),
+      page_view_duration_ms: Date.now() - parseInt(sessionStorage.getItem('session_start_time') || Date.now()),
+      current_settings: {
+        is_24hour: is24Hour,
+        show_seconds: showSeconds,
+        layout_compact: isCompactLayout,
+        theme_dark: isDarkTheme
+      },
+      feature_flags_active: {
+        dark_theme: isDarkTheme,
+        compact_layout: isCompactLayout,
+        smooth_animations: hasSmoothAnimations,
+        enhanced_time_display: hasEnhancedTimeDisplay,
+        search_bar: hasSearchBar
+      },
+      device_info: deviceInfo,
+      timestamp: new Date().toISOString()
+    });
+
+    // Simulate upgrade flow (you can replace this with actual upgrade logic)
+    alert('Upgrade to Premium! 🚀\n\n✨ Unlimited clocks\n⚡ Advanced themes\n📊 Analytics dashboard\n🌍 Weather integration');
+  };
+
   // Banner Component
   const Banner = () => {
     if (!text || !showBanner) return null;
@@ -304,7 +334,14 @@ const WorldClockDashboard = () => {
         <p style={{ margin: 0 }}>{text}</p>
         {isCloseable && (
           <button
-            onClick={() => setShowBanner(false)}
+            onClick={() => {
+              setShowBanner(false);
+              client.logEvent("banner_closed", "upsell_banner", {
+                banner_text: text,
+                user_session_id: getOrCreateSessionId(),
+                timestamp: new Date().toISOString()
+              });
+            }}
             style={{
               position: "absolute",
               right: "12px",
@@ -321,6 +358,35 @@ const WorldClockDashboard = () => {
           </button>
         )}
       </div>
+    );
+  };
+
+  // Upgrade Button Component
+  const UpgradeButton = () => {
+    return (
+      <button
+        onClick={handleUpgradeClick}
+        className="flex items-center gap-2 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl group"
+        style={{
+          background: "linear-gradient(135deg, #f59e0b, #f97316, #dc2626)",
+          borderRadius: "16px",
+          transition: `all ${hasSmoothAnimations ? 500 : 300}ms ease-in-out`,
+          transform: hasSmoothAnimations ? 'scale(1)' : 'none',
+          border: "2px solid rgba(255, 255, 255, 0.2)"
+        }}
+        onMouseEnter={hasSmoothAnimations ? (e) => {
+          e.target.style.transform = 'scale(1.05)';
+          e.target.style.background = 'linear-gradient(135deg, #fbbf24, #fb923c, #ef4444)';
+        } : undefined}
+        onMouseLeave={hasSmoothAnimations ? (e) => {
+          e.target.style.transform = 'scale(1)';
+          e.target.style.background = 'linear-gradient(135deg, #f59e0b, #f97316, #dc2626)';
+        } : undefined}
+      >
+        <Crown className="w-5 h-5" />
+        <span>Upgrade to Pro</span>
+        <Sparkles className="w-4 h-4 group-hover:animate-pulse" />
+      </button>
     );
   };
 
@@ -522,8 +588,13 @@ const WorldClockDashboard = () => {
       
       <div className="p-4">
         <div className="max-w-6xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-8">
+          {/* Header with Upgrade Button */}
+          <div className="text-center mb-8 relative">
+            {/* Upgrade Button - Top Right */}
+            <div className="absolute top-0 right-0">
+              <UpgradeButton />
+            </div>
+            
             <div className="flex items-center justify-center gap-3 mb-4">
               <Clock 
                 className="w-10 h-10"
