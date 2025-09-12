@@ -616,7 +616,8 @@ const WorldClockDashboard = () => {
                   color: "#ffffff"
                 }}
               >
-                {dashboardTitle} // Statsig parameter store
+                // STATSIG - This title below comes from Statsig
+                {dashboardTitle} 
               </h1>
             </div>
             <p 
