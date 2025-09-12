@@ -183,7 +183,9 @@ const WorldClockDashboard = () => {
   const dashboardStore = client.getParameterStore("dashboard_settings"); 
   const dashboardTitle = dashboardStore.get("title", "World Clock Dashboard"); 
   
- 
+  const prominentUpgradeExp = client.getExperiment("prominent_upgrade_icon"); // STATSIG - experiment
+  const upgradeStyle = prominentUpgradeExp.get("style", "original"); // STATSIG - experiment
+
   const { 
     trackClockAdded, 
     getClockDuration, 
@@ -367,32 +369,41 @@ const WorldClockDashboard = () => {
 
   // Upgrade Button Component
   const UpgradeButton = () => {
-    return (
-      <button
-        onClick={handleUpgradeClick}
-        className="flex items-center gap-2 text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl group"
-        style={{
-          background: "linear-gradient(135deg, #f59e0b, #f97316, #dc2626)",
-          borderRadius: "16px",
-          transition: `all ${hasSmoothAnimations ? 500 : 300}ms ease-in-out`,
-          transform: hasSmoothAnimations ? 'scale(1)' : 'none',
-          border: "2px solid rgba(255, 255, 255, 0.2)"
-        }}
-        onMouseEnter={hasSmoothAnimations ? (e) => {
-          e.target.style.transform = 'scale(1.05)';
-          e.target.style.background = 'linear-gradient(135deg, #fbbf24, #fb923c, #ef4444)';
-        } : undefined}
-        onMouseLeave={hasSmoothAnimations ? (e) => {
-          e.target.style.transform = 'scale(1)';
-          e.target.style.background = 'linear-gradient(135deg, #f59e0b, #f97316, #dc2626)';
-        } : undefined}
-      >
-        <Crown className="w-5 h-5" />
-        <span>Upgrade to Pro</span>
-        <Sparkles className="w-4 h-4 group-hover:animate-pulse" />
-      </button>
-    );
-  };
+  const isProminent = upgradeStyle === "prominent";
+
+  return (
+    <button
+      onClick={handleUpgradeClick}
+      className={`flex items-center gap-2 font-semibold group transition-all ${
+        isProminent
+          ? "text-white text-lg px-8 py-4 shadow-2xl bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 hover:scale-105"
+          : "text-white px-6 py-3 shadow-lg bg-gradient-to-br from-yellow-400 to-orange-500"
+      }`}
+      style={{
+        borderRadius: isProminent ? "24px" : "16px",
+        fontSize: isProminent ? "18px" : "14px",
+        border: "2px solid rgba(255, 255, 255, 0.2)",
+        transform: hasSmoothAnimations ? "scale(1)" : "none",
+        transition: `all ${hasSmoothAnimations ? 500 : 300}ms ease-in-out`,
+      }}
+      onMouseEnter={
+        hasSmoothAnimations
+          ? (e) => (e.target.style.transform = "scale(1.05)")
+          : undefined
+      }
+      onMouseLeave={
+        hasSmoothAnimations
+          ? (e) => (e.target.style.transform = "scale(1)")
+          : undefined
+      }
+    >
+      <Crown className="w-5 h-5" />
+      <span>{isProminent ? "🔥 Upgrade Now – Pro Features!" : "Upgrade to Pro"}</span>
+      <Sparkles className="w-4 h-4 group-hover:animate-pulse" />
+    </button>
+  );
+};
+
 
   // Analog Clock Component
   const AnalogClock = ({ timezone }) => {
