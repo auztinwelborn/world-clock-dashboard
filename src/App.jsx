@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, X, Clock, Settings, Crown, Sparkles } from 'lucide-react';
+import WorldMapWithSunlight from './WorldMapWithSunlight.jsx';
 
 // STATSIG - Import Statsig React SDK and plugins for feature flags and analytics - OBJECTIVE 1
 import { StatsigProvider, useClientAsyncInit, useStatsigClient } from "@statsig/react-bindings";
@@ -206,6 +207,7 @@ const WorldClockDashboard = () => {
   const hasSmoothAnimations = client.checkGate("smooth_animations");
   const hasEnhancedTimeDisplay = client.checkGate("enhanced_time_display");
   const hasSearchBar = client.checkGate("search_bar");
+  const hasSunlightOverlay = client.checkGate("sunlight_overlay"); // STATSIG - feature gate for world map sunlight overlay
 
   // STATSIG - Get dynamic config for banner content - OBJECTIVE 4
   const bannerConfig = client.getDynamicConfig("upsell_banner");
@@ -912,6 +914,13 @@ const WorldClockDashboard = () => {
               </div>
             ))}
           </div>
+
+          {/* STATSIG - Render World Map with Sunlight overlay only when gate passes */}
+          {hasSunlightOverlay && (
+            <div className="mt-8">
+              <WorldMapWithSunlight />
+            </div>
+          )}
 
           {/* Footer */}
           <div 
