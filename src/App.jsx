@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect } from 'react';
 import { Plus, X, Clock, Settings, Crown, Sparkles } from 'lucide-react';
 import WorldMapWithSunlight from './WorldMapWithSunlight.jsx';
@@ -375,7 +377,7 @@ const WorldClockDashboard = () => {
 
   // Upgrade Button Component
   const UpgradeButton = () => {
-  // Check experiment variant to determine upgrade button style (original vs prominent)
+  // STATSIG - Check experiment variant to determine upgrade button style (original vs prominent)
   const isProminent = upgradeStyle === "prominent";
 
   return (
