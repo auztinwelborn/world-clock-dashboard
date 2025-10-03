@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, X, Clock, Settings, Crown, Sparkles } from 'lucide-react';
 import WorldMapWithSunlight from './WorldMapWithSunlight.jsx';
 
-// STATSIG - Import Statsig React SDK and plugins for feature flags and analytics - OBJECTIVE 1
+// STATSIG - INSTALLATION - Import Statsig React SDK and plugins for feature flags and analytics - OBJECTIVE 1
 import { StatsigProvider, useClientAsyncInit, useStatsigClient } from "@statsig/react-bindings";
 import { StatsigAutoCapturePlugin } from "@statsig/web-analytics";
 import { StatsigSessionReplayPlugin } from "@statsig/session-replay";
@@ -37,9 +37,9 @@ const getOrCreateSessionId = () => {
   return sessionId;
 };
 
-// STATSIG - Generate user properties from browser
+// Custom function to generate user properties for Statsig for feature flag targeting and user analytics
 const getUserProperties = () => {
-  // Get or create a persistent user ID
+  // Get or create a persistent user ID for consistent user tracking across sessions
   let userID = localStorage.getItem('world_clock_user_id');
   if (!userID) {
     userID = `user_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
@@ -52,17 +52,18 @@ const getUserProperties = () => {
   return {
     userID: userID,
     email: userEmail,
-    // Auto-detected browser properties
+    // Auto-detected browser properties for device/location targeting
     userAgent: navigator.userAgent,
     locale: navigator.language,
     country: Intl.DateTimeFormat().resolvedOptions().timeZone.split('/')[1] || 'Unknown',
-    // Custom properties for analytics
+    // Custom IDs for advanced targeting and analytics segmentation
     customIDs: {
       sessionID: getOrCreateSessionId(),
       deviceType: window.innerWidth < 768 ? 'mobile' : 'desktop',
       browserName: getBrowserName(),
       timezoneRegion: Intl.DateTimeFormat().resolvedOptions().timeZone.split('/')[0] || 'Unknown'
     },
+    // Custom properties for detailed analytics and user behavior tracking
     custom: {
       screenResolution: `${window.screen.width}x${window.screen.height}`,
       windowSize: `${window.innerWidth}x${window.innerHeight}`,
@@ -75,7 +76,7 @@ const getUserProperties = () => {
   };
 };
 
-// Helper to detect browser name
+// Helper to detect browser name for user properties and targeting
 const getBrowserName = () => {
   const userAgent = navigator.userAgent;
   if (userAgent.includes('Chrome')) return 'Chrome';
@@ -85,7 +86,7 @@ const getBrowserName = () => {
   return 'Unknown';
 };
 
-// Store first visit timestamp
+// Store first visit timestamp for user analytics and cohort analysis
 if (!localStorage.getItem('world_clock_first_visit')) {
   localStorage.setItem('world_clock_first_visit', new Date().toISOString());
 }
@@ -180,12 +181,14 @@ const WorldClockDashboard = () => {
     { id: 3, label: 'Tokyo', timezone: 'Asia/Tokyo' }
   ]);
 
-  const { client } = useStatsigClient();  // STATSIG - Get Statsig client instance - NOTE: next 2 lines of code are also Statsig
+  // STATSIG - PARAMETER STORE - Get Statsig client instance for accessing feature flags, experiments, and dynamic configs
+  const { client } = useStatsigClient();
   const dashboardStore = client.getParameterStore("dashboard_settings"); 
   const dashboardTitle = dashboardStore.get("title", "World Clock Dashboard"); 
   
-  const prominentUpgradeExp = client.getExperiment("prominent_upgrade_icon"); // STATSIG - experiment
-  const upgradeStyle = prominentUpgradeExp.get("style", "original"); // STATSIG - experiment
+  // STATSIG - EXPERIMENT - Get experiment for A/B testing upgrade button prominence
+  const prominentUpgradeExp = client.getExperiment("prominent_upgrade_icon");
+  const upgradeStyle = prominentUpgradeExp.get("style", "original");
 
   const { 
     trackClockAdded, 
@@ -201,17 +204,16 @@ const WorldClockDashboard = () => {
   const [selectedTimezone, setSelectedTimezone] = useState('');
   const [showAddClock, setShowAddClock] = useState(false);
 
-  // STATSIG - Check feature gates for A/B testing - OBJECTIVE 3
+  // STATSIG - GATES -Check feature gates for A/B testing and gradual feature rollouts - OBJECTIVE 3
   const isDarkTheme = client.checkGate("dark_theme");
   const isCompactLayout = client.checkGate("compact_layout");
   const hasSmoothAnimations = client.checkGate("smooth_animations");
   const hasEnhancedTimeDisplay = client.checkGate("enhanced_time_display");
   const hasSearchBar = client.checkGate("search_bar");
-  const hasSunlightOverlay = client.checkGate("sunlight_overlay"); // STATSIG - feature gate for world map sunlight overlay
+  const hasSunlightOverlay = client.checkGate("sunlight_overlay");
 
-  // STATSIG - Get dynamic config for banner content - OBJECTIVE 4
+  // STATSIG - DYNAMIC CONFIG -Get dynamic config for banner content - OBJECTIVE 4
   const bannerConfig = client.getDynamicConfig("upsell_banner");
-  
   const text = bannerConfig.get("text", null);
   const bannerBackgroundColor = bannerConfig.get("backgroundColor", "#a855f7");
   const bannerTextColor = bannerConfig.get("color", "white");
@@ -311,8 +313,9 @@ const WorldClockDashboard = () => {
     };
   };
 
-  // STATSIG - Upgrade button click with event tracking - OBJECTIVE 2
+  // STATSIG - Upgrade button click with event tracking 
   const handleUpgradeClick = () => {
+    // STATSIG - EVENTS - Log custom event for upgrade button clicks with rich metadata
     client.logEvent("upgrade_button_clicked", {
       button_location: "top_right_header",
       current_clocks_count: clocks.length,
@@ -345,6 +348,7 @@ const WorldClockDashboard = () => {
           <button
             onClick={() => {
               setShowBanner(false);
+              // STATSIG - Log banner close event for analytics and user behavior tracking
               client.logEvent("banner_closed", "upsell_banner", {
                 user_session_id: getOrCreateSessionId(),
                 timestamp: new Date().toISOString()
@@ -371,6 +375,7 @@ const WorldClockDashboard = () => {
 
   // Upgrade Button Component
   const UpgradeButton = () => {
+  // Check experiment variant to determine upgrade button style (original vs prominent)
   const isProminent = upgradeStyle === "prominent";
 
   return (
@@ -513,7 +518,8 @@ const WorldClockDashboard = () => {
     // 2. Track the successful action (keeping all your original rich metadata)
     const deviceInfo = getDeviceInfo();
     
-    client.logEvent("clock_added", selectedTz.value, { // STATSIG - Log clock addition event - OBJECTIVE 2
+    // STATSIG - Log clock addition event with comprehensive metadata for analytics - OBJECTIVE 2
+    client.logEvent("clock_added", selectedTz.value, {
       timezone: selectedTz.value,
       label: selectedTz.label,
       total_clocks: clocks.length + 1,
@@ -537,8 +543,8 @@ const WorldClockDashboard = () => {
     
     setClocks(prev => prev.filter(clock => clock.id !== id));
 
-    // Log removal event with collected metadata
-    client.logEvent("clock_removed", clockToRemove?.timezone || "unknown", { // STATSIG - Log clock removal event - OBJECTIVE 2
+    // STATSIG - Log clock removal event with detailed metadata for user behavior analysis - OBJECTIVE 2
+    client.logEvent("clock_removed", clockToRemove?.timezone || "unknown", {
       clock_id: id,
       timezone: clockToRemove?.timezone,
       label: clockToRemove?.label,
@@ -560,7 +566,8 @@ const WorldClockDashboard = () => {
     
     const deviceInfo = getDeviceInfo();
     
-    client.logEvent("time_format_toggled", newFormat ? "24h" : "12h", { // STATSIG - Log time format toggle event - OBJECTIVE 2
+    // STATSIG - Log time format toggle event for user preference analytics - OBJECTIVE 2
+    client.logEvent("time_format_toggled", newFormat ? "24h" : "12h", {
       new_format: newFormat ? "24h" : "12h", 
       previous_format: newFormat ? "12h" : "24h",
       total_clocks_visible: clocks.length,
@@ -578,7 +585,8 @@ const WorldClockDashboard = () => {
     setShowSeconds(newState);
     incrementToggleCount('seconds');
     
-    client.logEvent("seconds_display_toggled", newState ? "enabled" : "disabled", { // STATSIG - Log seconds display toggle event - OBJECTIVE 2
+    // STATSIG - Log seconds display toggle event for UI preference tracking - OBJECTIVE 2
+    client.logEvent("seconds_display_toggled", newState ? "enabled" : "disabled", {
       new_state: newState ? "enabled" : "disabled",
       previous_state: newState ? "disabled" : "enabled",
       total_clocks_visible: clocks.length,
@@ -629,7 +637,7 @@ const WorldClockDashboard = () => {
                   color: "#ffffff"
                 }}
               >
-                {/* STATSIG - This title below comes from the parameter store */}
+                {/* STATSIG - Dashboard title dynamically loaded from parameter store */}
                 {dashboardTitle} 
               </h1>
             </div>
@@ -915,7 +923,7 @@ const WorldClockDashboard = () => {
             ))}
           </div>
 
-          {/* STATSIG - Render World Map with Sunlight overlay only when gate passes */}
+          {/* STATSIG - Render World Map with Sunlight overlay only when feature gate passes */}
           {hasSunlightOverlay && (
             <div className="mt-8">
               <WorldMapWithSunlight />
@@ -944,15 +952,20 @@ const WorldClockDashboard = () => {
   );
 };
 
-// STATSIG - App component using user properties - OBJECTIVE 1
+// STATSIG - App component using user properties and initializing Statsig client - OBJECTIVE 1
 function App() {
+  // STATSIG - Initialize Statsig client with user properties and plugins
   const { client } = useClientAsyncInit(
-    "client-1jKRKqgQNUDG6QY5wHhX2pFDELaEnSUFWw8vB879CBN",
-    getUserProperties(), // STATSIG - Using your user properties function
-    { plugins: [ new StatsigAutoCapturePlugin(), new StatsigSessionReplayPlugin() ] },
+    "client-1jKRKqgQNUDG6QY5wHhX2pFDELaEnSUFWw8vB879CBN", // STATSIG - Client SDK key
+    getUserProperties(), // STATSIG - Pass user properties for targeting and analytics
+    { 
+      // STATSIG - Enable automatic event capture and session replay plugins
+      plugins: [ new StatsigAutoCapturePlugin(), new StatsigSessionReplayPlugin() ] 
+    },
   );
 
   return (
+    // STATSIG - Wrap app with StatsigProvider to make client available to all components
     <StatsigProvider client={client} loadingComponent={<div>Loading...</div>}>
       <WorldClockDashboard />
     </StatsigProvider>
