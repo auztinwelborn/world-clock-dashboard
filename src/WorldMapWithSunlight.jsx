@@ -150,11 +150,14 @@ export default function WorldMapWithSunlight() {
   }, []);
 
   return (
-    <div className="backdrop-blur-lg border border-white/20" style={{ backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '16px', padding: '16px' }}>
-      <h2 className="text-lg font-semibold" style={{ color: '#ffffff', marginBottom: '8px' }}>World Map with Sunlight</h2>
-      <div ref={mapRef} style={{ width: '100%', height: '420px', borderRadius: '12px', overflow: 'hidden' }} />
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold text-white">World Map with Sunlight</h2>
+      <div
+        ref={mapRef}
+        className="world-map__canvas"
+        style={{ width: '100%', height: '420px', borderRadius: '16px', overflow: 'hidden' }}
+      />
     </div>
   );
 }
-
 
