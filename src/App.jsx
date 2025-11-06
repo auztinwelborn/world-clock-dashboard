@@ -185,7 +185,7 @@ const WorldClockDashboard = () => {
   const dashboardTitle = dashboardStore.get("title", "World Clock Dashboard");
 
   const prominentUpgradeExp = client.getExperiment("prominent_upgrade_icon");
-  const upgradeStyle = prominentUpgradeExp.get("style", "original");
+  const upgradeStyle = prominentUpgradeExp.get("upsell button", "original");
 
   const {
     trackClockAdded,
