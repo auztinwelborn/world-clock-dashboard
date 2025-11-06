@@ -1,10 +1,8 @@
-
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plus, X, Clock, Settings, Crown, Sparkles } from 'lucide-react';
 import WorldMapWithSunlight from './WorldMapWithSunlight.jsx';
 
-// STATSIG - INSTALLATION - Import Statsig React SDK and plugins for feature flags and analytics - OBJECTIVE 1
+// STATSIG - Import Statsig React SDK and plugins for feature flags and analytics - OBJECTIVE 1
 import { StatsigProvider, useClientAsyncInit, useStatsigClient } from "@statsig/react-bindings";
 import { StatsigAutoCapturePlugin } from "@statsig/web-analytics";
 import { StatsigSessionReplayPlugin } from "@statsig/session-replay";
@@ -39,9 +37,9 @@ const getOrCreateSessionId = () => {
   return sessionId;
 };
 
-// Custom function to generate user properties for Statsig for feature flag targeting and user analytics
+// STATSIG - Generate user properties from browser
 const getUserProperties = () => {
-  // Get or create a persistent user ID for consistent user tracking across sessions
+  // Get or create a persistent user ID
   let userID = localStorage.getItem('world_clock_user_id');
   if (!userID) {
     userID = `user_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
@@ -54,18 +52,17 @@ const getUserProperties = () => {
   return {
     userID: userID,
     email: userEmail,
-    // Auto-detected browser properties for device/location targeting
+    // Auto-detected browser properties
     userAgent: navigator.userAgent,
     locale: navigator.language,
     country: Intl.DateTimeFormat().resolvedOptions().timeZone.split('/')[1] || 'Unknown',
-    // Custom IDs for advanced targeting and analytics segmentation
+    // Custom properties for analytics
     customIDs: {
       sessionID: getOrCreateSessionId(),
       deviceType: window.innerWidth < 768 ? 'mobile' : 'desktop',
       browserName: getBrowserName(),
       timezoneRegion: Intl.DateTimeFormat().resolvedOptions().timeZone.split('/')[0] || 'Unknown'
     },
-    // Custom properties for detailed analytics and user behavior tracking
     custom: {
       screenResolution: `${window.screen.width}x${window.screen.height}`,
       windowSize: `${window.innerWidth}x${window.innerHeight}`,
@@ -78,7 +75,7 @@ const getUserProperties = () => {
   };
 };
 
-// Helper to detect browser name for user properties and targeting
+// Helper to detect browser name
 const getBrowserName = () => {
   const userAgent = navigator.userAgent;
   if (userAgent.includes('Chrome')) return 'Chrome';
@@ -88,7 +85,7 @@ const getBrowserName = () => {
   return 'Unknown';
 };
 
-// Store first visit timestamp for user analytics and cohort analysis
+// Store first visit timestamp
 if (!localStorage.getItem('world_clock_first_visit')) {
   localStorage.setItem('world_clock_first_visit', new Date().toISOString());
 }
@@ -96,14 +93,14 @@ if (!localStorage.getItem('world_clock_first_visit')) {
 const getContinent = (timezone) => {
   const continentMap = {
     'America': 'North America',
-    'Europe': 'Europe', 
+    'Europe': 'Europe',
     'Asia': 'Asia',
     'Australia': 'Oceania',
     'Africa': 'Africa',
     'Atlantic': 'Atlantic',
     'Pacific': 'Pacific'
   };
-  
+
   const continent = timezone.split('/')[0];
   return continentMap[continent] || 'Unknown';
 };
@@ -111,14 +108,14 @@ const getContinent = (timezone) => {
 const getTimezoneOffset = (timezone) => {
   const now = new Date();
   const localOffset = now.getTimezoneOffset();
-  const targetTime = new Date(now.toLocaleString("en-US", {timeZone: timezone}));
+  const targetTime = new Date(now.toLocaleString("en-US", { timeZone: timezone }));
   const targetOffset = (now.getTime() - targetTime.getTime()) / (1000 * 60);
   const hoursDiff = Math.round((targetOffset - localOffset) / 60);
   return hoursDiff > 0 ? `+${hoursDiff}` : hoursDiff.toString();
 };
 
 const isBusinessHours = (timezone) => {
-  const time = new Date().toLocaleString("en-US", {timeZone: timezone});
+  const time = new Date().toLocaleString("en-US", { timeZone: timezone });
   const hour = new Date(time).getHours();
   return hour >= 9 && hour <= 17;
 };
@@ -183,30 +180,29 @@ const WorldClockDashboard = () => {
     { id: 3, label: 'Tokyo', timezone: 'Asia/Tokyo' }
   ]);
 
-  // STATSIG - PARAMETER STORE - Get Statsig client instance for accessing feature flags, experiments, and dynamic configs
-  const { client } = useStatsigClient();
-  const dashboardStore = client.getParameterStore("dashboard_settings"); 
-  const dashboardTitle = dashboardStore.get("title", "World Clock Dashboard"); 
-  
-  // STATSIG - EXPERIMENT - Get experiment for A/B testing upgrade button prominence
-  const prominentUpgradeExp = client.getExperiment("prominent_upgrade_icon");
-  const upgradeStyle = prominentUpgradeExp.get("style", "original");
+  const { client } = useStatsigClient(); // STATSIG - Get Statsig client instance
+  const dashboardStore = client.getParameterStore("dashboard_settings");
+  const dashboardTitle = dashboardStore.get("title", "World Clock Dashboard");
 
-  const { 
-    trackClockAdded, 
-    getClockDuration, 
-    wasRecentlyAdded, 
-    toggleCounts, 
-    incrementToggleCount 
+  const prominentUpgradeExp = client.getExperiment("prominent_upgrade_icon");
+  const upgradeStyle = prominentUpgradeExp.get("upsell button", "original");
+
+  const {
+    trackClockAdded,
+    getClockDuration,
+    wasRecentlyAdded,
+    toggleCounts,
+    incrementToggleCount
   } = useClockTracking();
-  
+
   const [currentTime, setCurrentTime] = useState(new Date());
   const [is24Hour, setIs24Hour] = useState(false);
   const [showSeconds, setShowSeconds] = useState(true);
   const [selectedTimezone, setSelectedTimezone] = useState('');
   const [showAddClock, setShowAddClock] = useState(false);
+  const dropdownRef = useRef(null);
 
-  // STATSIG - GATES -Check feature gates for A/B testing and gradual feature rollouts - OBJECTIVE 3
+  // STATSIG - Check feature gates for A/B testing - OBJECTIVE 3
   const isDarkTheme = client.checkGate("dark_theme");
   const isCompactLayout = client.checkGate("compact_layout");
   const hasSmoothAnimations = client.checkGate("smooth_animations");
@@ -214,8 +210,9 @@ const WorldClockDashboard = () => {
   const hasSearchBar = client.checkGate("search_bar");
   const hasSunlightOverlay = client.checkGate("sunlight_overlay");
 
-  // STATSIG - DYNAMIC CONFIG -Get dynamic config for banner content - OBJECTIVE 4
+  // STATSIG - Get dynamic config for banner content - OBJECTIVE 4
   const bannerConfig = client.getDynamicConfig("upsell_banner");
+
   const text = bannerConfig.get("text", null);
   const bannerBackgroundColor = bannerConfig.get("backgroundColor", "#a855f7");
   const bannerTextColor = bannerConfig.get("color", "white");
@@ -236,7 +233,7 @@ const WorldClockDashboard = () => {
   // Handle clicking outside the search dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (showAddClock && !event.target.closest('.relative')) {
+      if (showAddClock && dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setShowAddClock(false);
       }
     };
@@ -271,29 +268,24 @@ const WorldClockDashboard = () => {
     return new Intl.DateTimeFormat('en-US', options).format(currentTime);
   };
 
-  // Get relative time info for enhanced display - FIXED
+  // Get relative time info for enhanced display
   const getRelativeTime = (timezone) => {
     const now = new Date();
-    
-    // Get current hour in local timezone
+
     const localHour = now.getHours();
-    
-    // Get current hour in target timezone
-    const targetTime = new Date(now.toLocaleString("en-US", {timeZone: timezone}));
+    const targetTime = new Date(now.toLocaleString("en-US", { timeZone: timezone }));
     const targetHour = targetTime.getHours();
-    
-    // Calculate the raw difference
+
     let diffInHours = targetHour - localHour;
-    
-    // Handle day boundary crossings
+
     if (diffInHours > 12) {
       diffInHours -= 24;
     } else if (diffInHours < -12) {
       diffInHours += 24;
     }
-    
+
     if (diffInHours === 0) return "Same time";
-    
+
     if (diffInHours > 0) {
       return `${diffInHours}h ahead`;
     } else {
@@ -303,11 +295,11 @@ const WorldClockDashboard = () => {
 
   // Get time components for analog clock
   const getTimeComponents = (timezone) => {
-    const date = new Date(currentTime.toLocaleString("en-US", {timeZone: timezone}));
+    const date = new Date(currentTime.toLocaleString("en-US", { timeZone: timezone }));
     const hours = date.getHours() % 12;
     const minutes = date.getMinutes();
     const seconds = date.getSeconds();
-    
+
     return {
       hourAngle: (hours * 30) + (minutes * 0.5),
       minuteAngle: minutes * 6,
@@ -315,128 +307,106 @@ const WorldClockDashboard = () => {
     };
   };
 
-  // STATSIG - Upgrade button click with event tracking 
+  // STATSIG - Upgrade button click with event tracking - OBJECTIVE 2
   const handleUpgradeClick = () => {
-    // STATSIG - EVENTS - Log custom event for upgrade button clicks with rich metadata
     client.logEvent("upgrade_button_clicked", {
-      button_location: "top_right_header",
+      button_location: "header_primary_cta",
       current_clocks_count: clocks.length,
       user_session_id: getOrCreateSessionId(),
       timestamp: new Date().toISOString()
     });
 
-    // Simulate upgrade flow
     alert('Upgrade to Premium! 🚀');
   };
 
   // Banner Component
   const Banner = () => {
     if (!text || !showBanner) return null;
-    
+
     return (
-      <div 
-        style={{
-          backgroundColor: bannerBackgroundColor,
-          color: bannerTextColor,
-          fontSize: fontSize + "px",
-          padding: "12px 16px",
-          textAlign: "center",
-          position: "relative",
-          zIndex: 1000
-        }}
-      >
-        <p style={{ margin: 0 }}>{text}</p>
-        {isCloseable && (
-          <button
-            onClick={() => {
-              setShowBanner(false);
-              // STATSIG - Log banner close event for analytics and user behavior tracking
-              client.logEvent("banner_closed", "upsell_banner", {
-                user_session_id: getOrCreateSessionId(),
-                timestamp: new Date().toISOString()
-              });
-            }}
-            style={{
-              position: "absolute",
-              right: "12px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              background: "none",
-              border: "none",
-              color: bannerTextColor,
-              fontSize: "18px",
-              cursor: "pointer"
-            }}
-          >
-            ×
-          </button>
-        )}
+      <div className="mx-auto mb-8 w-full max-w-6xl">
+        <div
+          className="relative overflow-hidden rounded-3xl border border-white/15 px-6 py-4 text-sm font-medium shadow-[0_25px_80px_rgba(129,140,248,0.35)] backdrop-blur-2xl"
+          style={{
+            background: bannerBackgroundColor,
+            color: bannerTextColor,
+            fontSize
+          }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-transparent to-white/10 opacity-70 mix-blend-screen" aria-hidden="true" />
+          <div className="relative flex flex-wrap items-center justify-center gap-4 sm:justify-between">
+            <div className="flex items-center gap-3">
+              <Sparkles className="h-4 w-4" />
+              <span>{text}</span>
+            </div>
+            {isCloseable && (
+              <button
+                onClick={() => {
+                  setShowBanner(false);
+                  client.logEvent("banner_closed", "upsell_banner", {
+                    user_session_id: getOrCreateSessionId(),
+                    timestamp: new Date().toISOString()
+                  });
+                }}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/40 bg-white/10 text-sm"
+                style={{ color: bannerTextColor }}
+                aria-label="Dismiss banner"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     );
   };
 
   // Upgrade Button Component
   const UpgradeButton = () => {
-  // STATSIG - Check experiment variant to determine upgrade button style (original vs prominent)
-  const isProminent = upgradeStyle === "prominent";
+    const isProminent = upgradeStyle === "prominent";
+    const interactiveClasses = hasSmoothAnimations
+      ? 'transition-transform duration-500 ease-in-out hover:-translate-y-0.5 hover:scale-[1.02]'
+      : '';
 
-  return (
-    <button
-      onClick={handleUpgradeClick}
-      className={`flex items-center gap-2 font-semibold group transition-all ${
-        isProminent
-          ? "text-white text-lg px-8 py-4 shadow-2xl bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 hover:scale-105"
-          : "text-white px-6 py-3 shadow-lg bg-gradient-to-br from-yellow-400 to-orange-500"
-      }`}
-      style={{
-        borderRadius: isProminent ? "24px" : "16px",
-        fontSize: isProminent ? "18px" : "14px",
-        border: "2px solid rgba(255, 255, 255, 0.2)",
-        transform: hasSmoothAnimations ? "scale(1)" : "none",
-        transition: `all ${hasSmoothAnimations ? 500 : 300}ms ease-in-out`,
-      }}
-      onMouseEnter={
-        hasSmoothAnimations
-          ? (e) => (e.target.style.transform = "scale(1.05)")
-          : undefined
-      }
-      onMouseLeave={
-        hasSmoothAnimations
-          ? (e) => (e.target.style.transform = "scale(1)")
-          : undefined
-      }
-    >
-      <Crown className="w-5 h-5" />
-      <span>{isProminent ? "🔥 Upgrade Now – Pro Features!" : "Upgrade to Pro"}</span>
-      <Sparkles className="w-4 h-4 group-hover:animate-pulse" />
-    </button>
-  );
-};
+    const variantClasses = isProminent
+      ? 'bg-gradient-to-r from-amber-300 via-orange-400 to-rose-400 text-slate-900 shadow-[0_22px_65px_rgba(251,191,36,0.35)]'
+      : 'bg-gradient-to-r from-yellow-300 via-amber-300 to-orange-300 text-slate-900 shadow-[0_18px_55px_rgba(253,224,71,0.3)]';
 
+    return (
+      <button
+        onClick={handleUpgradeClick}
+        className={`inline-flex items-center gap-2 rounded-full border border-white/20 px-6 py-3 text-sm font-semibold ${variantClasses} ${interactiveClasses}`}
+      >
+        <Crown className="h-4 w-4" />
+        <span>{isProminent ? "🔥 Upgrade Now — Pro Features!" : "Upgrade to Pro"}</span>
+        <Sparkles className="h-4 w-4" />
+      </button>
+    );
+  };
 
   // Analog Clock Component
   const AnalogClock = ({ timezone }) => {
     const { hourAngle, minuteAngle, secondAngle } = getTimeComponents(timezone);
-    
+
     return (
-      <div className="relative w-20 h-20 mx-auto">
-        <svg viewBox="0 0 100 100" className="w-full h-full">
+      <div className="relative flex h-24 w-24 items-center justify-center rounded-full border border-white/15 bg-gradient-to-br from-violet-500/15 via-transparent to-indigo-500/25 p-4 shadow-inner">
+        <svg viewBox="0 0 100 100" className="h-full w-full text-white/80">
           <circle
             cx="50"
             cy="50"
             r="48"
-            fill="rgba(147, 51, 234, 0.1)"
-            stroke="rgba(196, 181, 253, 0.4)"
+            fill="rgba(30, 41, 59, 0.45)"
+            stroke="rgba(165, 180, 252, 0.35)"
             strokeWidth="2"
           />
-          
+
           {[...Array(12)].map((_, i) => {
             const angle = i * 30;
             const x1 = 50 + Math.cos((angle - 90) * Math.PI / 180) * 40;
             const y1 = 50 + Math.sin((angle - 90) * Math.PI / 180) * 40;
             const x2 = 50 + Math.cos((angle - 90) * Math.PI / 180) * 35;
             const y2 = 50 + Math.sin((angle - 90) * Math.PI / 180) * 35;
-            
+
             return (
               <line
                 key={i}
@@ -444,50 +414,45 @@ const WorldClockDashboard = () => {
                 y1={y1}
                 x2={x2}
                 y2={y2}
-                stroke="rgba(196, 181, 253, 0.6)"
+                stroke="rgba(199, 210, 254, 0.5)"
                 strokeWidth="2"
               />
             );
           })}
-          
+
           <line
             x1="50"
             y1="50"
-            x2={50 + Math.cos((hourAngle - 90) * Math.PI / 180) * 25}
-            y2={50 + Math.sin((hourAngle - 90) * Math.PI / 180) * 25}
-            stroke="#a855f7"
+            x2={50 + Math.cos((hourAngle - 90) * Math.PI / 180) * 24}
+            y2={50 + Math.sin((hourAngle - 90) * Math.PI / 180) * 24}
+            stroke="#f5d0fe"
+            strokeWidth="4"
+            strokeLinecap="round"
+          />
+
+          <line
+            x1="50"
+            y1="50"
+            x2={50 + Math.cos((minuteAngle - 90) * Math.PI / 180) * 32}
+            y2={50 + Math.sin((minuteAngle - 90) * Math.PI / 180) * 32}
+            stroke="#c4b5fd"
             strokeWidth="3"
             strokeLinecap="round"
           />
-          
-          <line
-            x1="50"
-            y1="50"
-            x2={50 + Math.cos((minuteAngle - 90) * Math.PI / 180) * 35}
-            y2={50 + Math.sin((minuteAngle - 90) * Math.PI / 180) * 35}
-            stroke="#a855f7"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-          
+
           {showSeconds && (
             <line
               x1="50"
               y1="50"
-              x2={50 + Math.cos((secondAngle - 90) * Math.PI / 180) * 38}
-              y2={50 + Math.sin((secondAngle - 90) * Math.PI / 180) * 38}
-              stroke="#ec4899"
-              strokeWidth="1"
+              x2={50 + Math.cos((secondAngle - 90) * Math.PI / 180) * 34}
+              y2={50 + Math.sin((secondAngle - 90) * Math.PI / 180) * 34}
+              stroke="#f472b6"
+              strokeWidth="1.5"
               strokeLinecap="round"
             />
           )}
-          
-          <circle
-            cx="50"
-            cy="50"
-            r="3"
-            fill="#a855f7"
-          />
+
+          <circle cx="50" cy="50" r="3" fill="#fdf2f8" />
         </svg>
       </div>
     );
@@ -505,7 +470,6 @@ const WorldClockDashboard = () => {
       return;
     }
 
-    // 1. Execute business logic
     const newClock = {
       id: Date.now(),
       label: selectedTz.label,
@@ -517,10 +481,8 @@ const WorldClockDashboard = () => {
     setSelectedTimezone('');
     setShowAddClock(false);
 
-    // 2. Track the successful action (keeping all your original rich metadata)
     const deviceInfo = getDeviceInfo();
-    
-    // STATSIG - Log clock addition event with comprehensive metadata for analytics - OBJECTIVE 2
+
     client.logEvent("clock_added", selectedTz.value, {
       timezone: selectedTz.value,
       label: selectedTz.label,
@@ -542,10 +504,9 @@ const WorldClockDashboard = () => {
   const removeClock = (id) => {
     const clockToRemove = clocks.find(clock => clock.id === id);
     const duration = getClockDuration(id);
-    
+
     setClocks(prev => prev.filter(clock => clock.id !== id));
 
-    // STATSIG - Log clock removal event with detailed metadata for user behavior analysis - OBJECTIVE 2
     client.logEvent("clock_removed", clockToRemove?.timezone || "unknown", {
       clock_id: id,
       timezone: clockToRemove?.timezone,
@@ -565,12 +526,11 @@ const WorldClockDashboard = () => {
     const newFormat = !is24Hour;
     setIs24Hour(newFormat);
     incrementToggleCount('timeFormat');
-    
+
     const deviceInfo = getDeviceInfo();
-    
-    // STATSIG - Log time format toggle event for user preference analytics - OBJECTIVE 2
+
     client.logEvent("time_format_toggled", newFormat ? "24h" : "12h", {
-      new_format: newFormat ? "24h" : "12h", 
+      new_format: newFormat ? "24h" : "12h",
       previous_format: newFormat ? "12h" : "24h",
       total_clocks_visible: clocks.length,
       user_session_id: getOrCreateSessionId(),
@@ -586,8 +546,7 @@ const WorldClockDashboard = () => {
     const newState = !showSeconds;
     setShowSeconds(newState);
     incrementToggleCount('seconds');
-    
-    // STATSIG - Log seconds display toggle event for UI preference tracking - OBJECTIVE 2
+
     client.logEvent("seconds_display_toggled", newState ? "enabled" : "disabled", {
       new_state: newState ? "enabled" : "disabled",
       previous_state: newState ? "disabled" : "enabled",
@@ -599,346 +558,280 @@ const WorldClockDashboard = () => {
     });
   };
 
+  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone.replace(/_/g, ' ');
+  const localTimePreview = new Intl.DateTimeFormat('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    ...(showSeconds ? { second: '2-digit' } : {}),
+    hour12: !is24Hour,
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+  }).format(currentTime);
+
+  const enabledFeatureCount = [
+    isDarkTheme,
+    isCompactLayout,
+    hasSmoothAnimations,
+    hasEnhancedTimeDisplay,
+    hasSearchBar,
+    hasSunlightOverlay
+  ].filter(Boolean).length;
+
+  const quickStats = [
+    { label: 'Clocks Tracked', value: `${clocks.length}` },
+    { label: 'Time Format', value: is24Hour ? '24-hour' : '12-hour' },
+    { label: 'Seconds Display', value: showSeconds ? 'Visible' : 'Hidden' },
+    { label: 'Feature Gates', value: `${enabledFeatureCount} active` }
+  ];
+
+  const filteredTimezones = selectedTimezone
+    ? TIME_ZONES.filter(zone =>
+        zone.label.toLowerCase().includes(selectedTimezone.toLowerCase()) ||
+        zone.value.toLowerCase().includes(selectedTimezone.toLowerCase())
+      ).slice(0, 8)
+    : [];
+
+  const quickAddZones = TIME_ZONES.slice(0, 3);
+
+  const panelHoverClass = hasSmoothAnimations
+    ? 'transition-all duration-500 ease-in-out hover:-translate-y-1 hover:shadow-[0_45px_140px_rgba(76,29,149,0.45)]'
+    : '';
+  const buttonHoverClass = hasSmoothAnimations
+    ? 'transition-transform duration-500 ease-in-out hover:scale-[1.03]'
+    : '';
+  const gridColumnsClass = isCompactLayout ? 'sm:grid-cols-1 md:grid-cols-2' : 'sm:grid-cols-2 lg:grid-cols-3';
+
   return (
-    <div 
-      className="min-h-screen font-inter"
+    <div
+      className="app-shell font-inter"
       style={{
-        background: isDarkTheme 
-          ? `linear-gradient(to bottom right, #000000, #1a1a1a, #000000)` 
-          : `linear-gradient(to bottom right, #0f172a, #581c87, #0f172a)`,
-        transition: `all ${hasSmoothAnimations ? 500 : 300}ms ease-in-out`,
+        '--bg-gradient': isDarkTheme
+          ? 'radial-gradient(circle at 20% 20%, rgba(10,10,15,0.95), #050505 65%)'
+          : 'linear-gradient(135deg, #0b1437 0%, #461176 42%, #0f2a52 100%)',
         transform: hasSmoothAnimations ? 'scale(1)' : 'none'
       }}
     >
-      {/* Dynamic Config Banner */}
+      <span className="app-shell__glow app-shell__glow--left" aria-hidden="true" />
+      <span className="app-shell__glow app-shell__glow--right" aria-hidden="true" />
+      <span className="app-shell__stars" aria-hidden="true" />
       <Banner />
-      
-      <div className="p-4">
-        <div className="max-w-6xl mx-auto">
-          {/* Header with Upgrade Button */}
-          <div className="text-center mb-8 relative">
-            {/* Upgrade Button - Top Right */}
-            <div className="absolute top-0 right-0">
-              <UpgradeButton />
-            </div>
-            
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <Clock 
-                className="w-10 h-10"
-                style={{ 
-                  color: "#9ca3af",
-                  transform: hasSmoothAnimations ? 'scale(1)' : 'none',
-                  transition: `all ${hasSmoothAnimations ? 500 : 300}ms ease-in-out`
-                }}
-              />
-              <h1 
-                className="font-bold tracking-tight"
-                style={{ 
-                  fontSize: "36px",
-                  fontWeight: 600,
-                  color: "#ffffff"
-                }}
-              >
-                {/* STATSIG - Dashboard title dynamically loaded from parameter store */}
-                {dashboardTitle} 
-              </h1>
-            </div>
-            <p 
-              className="font-light"
-              style={{ color: "#9ca3af" }}
-            >
-              Keep track of time across the globe
-            </p>
-          </div>
 
-          {/* Controls */}
-          <div 
-            className="backdrop-blur-lg mb-8 border border-white/20"
-            style={{
-              backgroundColor: "rgba(255,255,255,0.1)",
-              borderRadius: "16px",
-              padding: "24px",
-              transition: `all ${hasSmoothAnimations ? 500 : 300}ms ease-in-out`,
-              transform: hasSmoothAnimations ? 'translateY(0)' : 'none'
-            }}
-          >
-            <div className="flex flex-wrap items-center gap-4 justify-between">
-              <div className="flex items-center gap-2">
-                <Settings 
-                  className="w-5 h-5"
-                  style={{ color: "#9ca3af" }}
-                />
-                <span 
-                  className="font-medium"
-                  style={{ color: "#ffffff" }}
-                >
-                  Settings
-                </span>
-              </div>
-              
-              <div className="flex flex-wrap items-center gap-6">
-                <div className="flex items-center gap-4">
-                  <label 
-                    className="flex items-center gap-2"
-                    style={{ color: "#ffffff" }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={is24Hour}
-                      onChange={toggle24Hour}
-                      className="rounded"
-                    />
-                    24-hour format
-                  </label>
-                  
-                  <label 
-                    className="flex items-center gap-2"
-                    style={{ color: "#ffffff" }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={showSeconds}
-                      onChange={toggleSeconds}
-                      className="rounded"
-                    />
-                    Show seconds
-                  </label>
+      <div className="relative z-10 px-4 pb-16 pt-12 sm:px-6 lg:px-12">
+        <div className="mx-auto max-w-6xl space-y-10">
+          <header className={`relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.08] px-6 py-10 shadow-[0_45px_140px_rgba(59,7,100,0.45)] backdrop-blur-xl sm:px-12 ${panelHoverClass}`}>
+            <div className="pointer-events-none absolute -right-12 -top-16 hidden h-56 w-56 rounded-full bg-gradient-to-br from-fuchsia-500/20 via-purple-500/20 to-transparent blur-3xl sm:block" />
+            <div className="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-4 text-center sm:text-left">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-slate-200/70">
+                  <Clock className="h-3.5 w-3.5" />
+                  global time intelligence
                 </div>
+                <div className="space-y-2">
+                  <h1 className="bg-gradient-to-r from-indigo-200 via-sky-100 to-fuchsia-200 bg-clip-text text-4xl font-semibold tracking-tight text-transparent sm:text-5xl md:text-[3.1rem]">
+                    {dashboardTitle}
+                  </h1>
+                  <p className="text-base text-slate-200/80 sm:text-lg">
+                    Keep your team aligned across the globe with live clocks, contextual insights, and feature flags delivered by Statsig experiments.
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-slate-200/70 sm:justify-start">
+                  <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
+                    Local time · {localTimePreview}
+                  </span>
+                  <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
+                    Timezone · {userTimezone}
+                  </span>
+                  <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
+                    Feature gates · {enabledFeatureCount} active
+                  </span>
+                </div>
+              </div>
+              <div className="flex justify-center sm:justify-end">
+                <UpgradeButton />
+              </div>
+            </div>
 
+            <dl className="mt-10 grid grid-cols-2 gap-4 text-left sm:grid-cols-4">
+              {quickStats.map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-2xl border border-white/15 bg-white/10 px-4 py-4 backdrop-blur-lg"
+                >
+                  <dt className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-200/60">
+                    {item.label}
+                  </dt>
+                  <dd className="mt-2 text-lg font-semibold text-white">
+                    {item.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </header>
+
+          <section className={`rounded-3xl border border-white/10 bg-white/[0.08] px-6 py-7 shadow-[0_40px_120px_rgba(17,25,40,0.55)] backdrop-blur-xl sm:px-10 sm:py-10 ${panelHoverClass}`}>
+            <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.35em] text-slate-200/70">
+                  <Settings className="h-3.5 w-3.5" />
+                  controls
+                </div>
+                <h2 className="text-2xl font-semibold text-white">Dashboard controls</h2>
+                <p className="text-sm text-slate-300/80">
+                  Toggle how you view global time and add new hubs to monitor.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-4 md:justify-end">
+                <label className="flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white">
+                  <input
+                    type="checkbox"
+                    checked={is24Hour}
+                    onChange={toggle24Hour}
+                    className="rounded border-white/30 bg-transparent text-violet-400 focus:ring-violet-400"
+                  />
+                  24-hour format
+                </label>
+                <label className="flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white">
+                  <input
+                    type="checkbox"
+                    checked={showSeconds}
+                    onChange={toggleSeconds}
+                    className="rounded border-white/30 bg-transparent text-violet-400 focus:ring-violet-400"
+                  />
+                  Show seconds
+                </label>
                 <button
                   onClick={() => setShowAddClock(!showAddClock)}
-                  className="flex items-center gap-2 text-white px-4 py-2 rounded-lg font-medium"
-                  style={{
-                    backgroundColor: "#6b7280",
-                    borderRadius: "16px",
-                    transition: `all ${hasSmoothAnimations ? 500 : 300}ms ease-in-out`,
-                    transform: hasSmoothAnimations ? 'scale(1)' : 'none'
-                  }}
-                  onMouseEnter={hasSmoothAnimations ? (e) => e.target.style.transform = 'scale(1.05)' : undefined}
-                  onMouseLeave={hasSmoothAnimations ? (e) => e.target.style.transform = 'scale(1)' : undefined}
+                  className={`inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-400 via-fuchsia-500 to-rose-500 px-5 py-2 text-sm font-semibold text-slate-900 shadow-[0_20px_65px_rgba(162,91,255,0.45)] ${buttonHoverClass}`}
                 >
-                  <Plus className="w-4 h-4" />
-                  Add Clock
+                  <Plus className="h-4 w-4" />
+                  Add clock
                 </button>
               </div>
             </div>
 
-            {/* Add Clock Section - search_bar feature gate */}
-            <div className="mt-4 pt-4 border-t border-white/20">
-              {hasSearchBar ? (
-                <div className="flex flex-wrap gap-3 items-end">
-                  <div className="flex-1 min-w-[200px]">
-                    <label 
-                      className="block text-sm font-medium mb-2"
-                      style={{ color: "#ffffff" }}
-                    >
-                      Search & Add Timezone
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={selectedTimezone}
-                        onChange={(e) => setSelectedTimezone(e.target.value)}
-                        onFocus={() => setShowAddClock(true)}
-                        placeholder="Type to search timezones..."
-                        className="w-full border border-white/20 px-3 py-2 placeholder-gray-400 focus:ring-2 focus:border-transparent"
-                        style={{
-                          backgroundColor: "rgba(255,255,255,0.1)",
-                          color: "#ffffff",
-                          borderRadius: "16px",
-                          transition: `all ${hasSmoothAnimations ? 500 : 300}ms ease-in-out`
-                        }}
-                      />
-                      {showAddClock && selectedTimezone && (
-                        <div 
-                          className="absolute top-full left-0 right-0 mt-1 backdrop-blur-lg border border-white/20 max-h-48 overflow-y-auto z-10"
-                          style={{
-                            backgroundColor: "rgba(255,255,255,0.1)",
-                            borderRadius: "16px"
-                          }}
-                        >
-                          {TIME_ZONES
-                            .filter(zone => 
-                              zone.label.toLowerCase().includes(selectedTimezone.toLowerCase()) ||
-                              zone.value.toLowerCase().includes(selectedTimezone.toLowerCase())
-                            )
-                            .slice(0, 8)
-                            .map(zone => (
-                              <button
-                                key={zone.value}
-                                onClick={() => addClock(zone.value, 'search', selectedTimezone)} // Uses single addClock function
-                                className="w-full text-left px-3 py-2 hover:bg-white/20 border-b border-white/10 last:border-b-0"
-                                style={{
-                                  color: "#ffffff",
-                                  transition: `all ${hasSmoothAnimations ? 500 : 300}ms ease-in-out`
-                                }}
-                              >
-                                <div className="font-medium">{zone.label}</div>
-                                <div className="text-sm text-gray-400">{zone.value}</div>
-                              </button>
-                            ))}
+            {hasSearchBar && (
+              <div className="mt-8 rounded-2xl border border-white/10 bg-slate-900/40 p-6 shadow-inner backdrop-blur-xl">
+                <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-300/70">
+                  Search & add timezone
+                </label>
+                <div className="relative mt-3" ref={dropdownRef}>
+                  <input
+                    type="text"
+                    value={selectedTimezone}
+                    onChange={(e) => setSelectedTimezone(e.target.value)}
+                    onFocus={() => setShowAddClock(true)}
+                    placeholder="Type a city or IANA timezone (e.g. Europe/Paris)…"
+                    className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-slate-100 placeholder:text-slate-400/60 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-400/60"
+                  />
+                  {showAddClock && selectedTimezone && (
+                    <div className="absolute top-full left-0 right-0 z-20 mt-2 max-h-56 overflow-y-auto rounded-2xl border border-white/10 bg-slate-900/90 backdrop-blur-xl shadow-[0_25px_85px_rgba(30,20,60,0.55)]">
+                      {filteredTimezones.length > 0 ? (
+                        filteredTimezones.map((zone) => (
+                          <button
+                            key={zone.value}
+                            onClick={() => addClock(zone.value, 'search', selectedTimezone)}
+                            className="flex w-full flex-col items-start gap-1 px-4 py-3 text-left text-sm text-slate-100 transition hover:bg-white/10"
+                          >
+                            <span className="font-medium">{zone.label}</span>
+                            <span className="text-xs text-slate-300/70">{zone.value}</span>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="px-4 py-3 text-sm text-slate-300/70">
+                          No matches yet — try another city or region.
                         </div>
                       )}
                     </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-3 items-end">
-                  <div className="flex-1 min-w-[200px]">
-                    <label 
-                      className="block text-sm font-medium mb-2"
-                      style={{ color: "#ffffff" }}
-                    >
-                      Select Timezone
-                    </label>
-                    <select
-                      value={selectedTimezone}
-                      onChange={(e) => setSelectedTimezone(e.target.value)}
-                      className="w-full border border-white/20 px-3 py-2 focus:ring-2 focus:border-transparent"
-                      style={{
-                        backgroundColor: "rgba(255,255,255,0.1)",
-                        color: "#ffffff",
-                        borderRadius: "16px",
-                        transition: `all ${hasSmoothAnimations ? 500 : 300}ms ease-in-out`
-                      }}
-                    >
-                      <option value="" className="bg-slate-800 text-white">Choose a city...</option>
-                      {TIME_ZONES.map(zone => (
-                        <option key={zone.value} value={zone.value} className="bg-slate-800 text-white">
-                          {zone.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <button
-                    onClick={() => addClock(selectedTimezone, 'dropdown')} // Uses single addClock function
-                    disabled={!selectedTimezone}
-                    className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-2 font-medium"
-                    style={{
-                      borderRadius: "16px",
-                      transition: `all ${hasSmoothAnimations ? 500 : 300}ms ease-in-out`
-                    }}
-                  >
-                    Add
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Clock Grid - layout controlled by compact_layout feature gate */}
-          <div 
-            className={isCompactLayout ? "space-y-3" : "grid gap-6"}
-            style={{
-              gridTemplateColumns: isCompactLayout ? 'none' : `repeat(${Math.min(3, clocks.length)}, 1fr)`
-            }}
-          >
-            {clocks.map((clock) => (
-              <div
-                key={clock.id}
-                className={`backdrop-blur-lg border border-white/20 hover:bg-white/15 group ${
-                  isCompactLayout ? 'flex items-center justify-between' : ''
-                }`}
-                style={{
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                  borderRadius: "16px",
-                  padding: "24px",
-                  transition: `all ${hasSmoothAnimations ? 500 : 300}ms ease-in-out`,
-                  transform: hasSmoothAnimations ? 'scale(1)' : 'none'
-                }}
-                onMouseEnter={hasSmoothAnimations ? (e) => e.target.style.transform = 'scale(1.02)' : undefined}
-                onMouseLeave={hasSmoothAnimations ? (e) => e.target.style.transform = 'scale(1)' : undefined}
-              >
-                <div className={`flex ${isCompactLayout ? 'items-center gap-6 flex-1' : 'justify-between items-start mb-4'}`}>
-                  <h3 
-                    className={`text-xl font-semibold tracking-wide ${isCompactLayout ? 'min-w-[120px]' : ''}`}
-                    style={{ color: "#ffffff" }}
-                  >
-                    {clock.label}
-                  </h3>
-                  {clocks.length > 1 && !isCompactLayout && (
-                    <button
-                      onClick={() => removeClock(clock.id)}
-                      className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100"
-                      style={{
-                        transition: `all ${hasSmoothAnimations ? 500 : 300}ms ease-in-out`
-                      }}
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
                   )}
                 </div>
-                
-                <div className={`${isCompactLayout ? 'flex items-center gap-6' : 'text-center'}`}>
-                  <div className={`flex ${isCompactLayout ? 'items-center gap-6' : 'items-center justify-between gap-6'}`}>
-                    <div className={isCompactLayout ? 'text-left' : 'flex-1'}>
-                      <div 
-                        className={`font-jetbrains ${isCompactLayout ? 'mb-0' : 'mb-2'} tracking-wider`}
-                        style={{ 
-                          fontSize: `${hasEnhancedTimeDisplay ? 48 : 36}px`,
-                          fontWeight: 600,
-                          color: "#ffffff"
-                        }}
-                      >
-                        {formatTime(clock.timezone)}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {quickAddZones.map((zone) => (
+                    <button
+                      key={zone.value}
+                      onClick={() => addClock(zone.value, 'quick_select')}
+                      className={`inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium text-slate-100 ${buttonHoverClass}`}
+                    >
+                      <Plus className="h-3 w-3" />
+                      {zone.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+
+          <section className={`grid gap-6 ${gridColumnsClass}`}>
+            {clocks.map((clock) => {
+              const timezoneOffset = getTimezoneOffset(clock.timezone);
+              const businessOpen = isBusinessHours(clock.timezone);
+              const continent = getContinent(clock.timezone);
+
+              return (
+                <div
+                  key={clock.id}
+                  className={`group relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.08] p-6 shadow-[0_45px_140px_rgba(59,7,100,0.4)] backdrop-blur-xl ${panelHoverClass}`}
+                >
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                  <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                    <div className="space-y-4">
+                      <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.35em] text-slate-300/70">
+                        <span className="rounded-full border border-white/15 bg-white/10 px-2 py-1 text-[11px]">
+                          {continent}
+                        </span>
+                        <span className="rounded-full border border-white/15 bg-white/10 px-2 py-1 text-[11px]">
+                          UTC {timezoneOffset}
+                        </span>
+                        <span className={`rounded-full px-2 py-1 text-[11px] ${businessOpen ? 'border border-emerald-300/50 bg-emerald-400/20 text-emerald-100' : 'border border-slate-400/40 bg-slate-400/10 text-slate-200/80'}`}>
+                          {businessOpen ? 'Business hrs' : 'After hours'}
+                        </span>
                       </div>
-                      {!isCompactLayout && (
-                        <>
-                          <div 
-                            className="text-sm font-light"
-                            style={{ color: "#9ca3af" }}
-                          >
-                            {formatDate(clock.timezone)}
-                          </div>
+                      <div className="space-y-2">
+                        <h3 className="text-2xl font-semibold tracking-wide text-white">
+                          {clock.label}
+                        </h3>
+                        <div
+                          className={`font-jetbrains text-[2.4rem] leading-none text-white ${hasEnhancedTimeDisplay ? 'tracking-[0.35em]' : 'tracking-[0.2em]'}`}
+                        >
+                          {formatTime(clock.timezone)}
+                        </div>
+                        <div className="space-y-1 text-sm text-slate-300/75">
+                          <div>{formatDate(clock.timezone)}</div>
                           {hasEnhancedTimeDisplay && (
-                            <div 
-                              className="text-xs font-medium mt-1"
-                              style={{ color: "#9ca3af" }}
-                            >
+                            <div className="text-xs uppercase tracking-[0.35em] text-slate-400/70">
                               {getRelativeTime(clock.timezone)}
                             </div>
                           )}
-                        </>
-                      )}
+                        </div>
+                      </div>
                     </div>
-                    
                     {!isCompactLayout && (
-                      <div className="flex-shrink-0 flex items-center justify-center h-full">
+                      <div className="flex-shrink-0">
                         <AnalogClock timezone={clock.timezone} />
                       </div>
                     )}
                   </div>
-                  
-                  {clocks.length > 1 && isCompactLayout && (
+                  {clocks.length > 1 && (
                     <button
                       onClick={() => removeClock(clock.id)}
-                      className="text-red-400 hover:text-red-300"
-                      style={{
-                        transition: `all ${hasSmoothAnimations ? 500 : 300}ms ease-in-out`
-                      }}
+                      className={`absolute right-6 top-6 rounded-full border border-white/15 bg-white/10 p-2 text-slate-200/80 hover:text-rose-300 ${buttonHoverClass}`}
+                      aria-label={`Remove ${clock.label}`}
                     >
-                      <X className="w-5 h-5" />
+                      <X className="h-4 w-4" />
                     </button>
                   )}
                 </div>
-              </div>
-            ))}
-          </div>
+              );
+            })}
+          </section>
 
-          {/* STATSIG - Render World Map with Sunlight overlay only when feature gate passes */}
           {hasSunlightOverlay && (
-            <div className="mt-8">
+            <div className={`rounded-3xl border border-white/10 bg-white/[0.08] p-6 shadow-[0_40px_120px_rgba(17,25,40,0.55)] backdrop-blur-xl ${panelHoverClass}`}>
               <WorldMapWithSunlight />
             </div>
           )}
 
-          {/* Footer */}
-          <div 
-            className="text-center mt-12 text-sm font-light"
-            style={{ color: "#9ca3af" }}
-          >
-            <p>Times update automatically every second</p>
-          </div>
+          <footer className="text-center text-sm font-light text-slate-300/80">
+            <p>Times update automatically every second · Powered by Statsig experiments</p>
+          </footer>
         </div>
       </div>
 
@@ -954,20 +847,15 @@ const WorldClockDashboard = () => {
   );
 };
 
-// STATSIG - App component using user properties and initializing Statsig client - OBJECTIVE 1
+// STATSIG - App component using user properties - OBJECTIVE 1
 function App() {
-  // STATSIG - Initialize Statsig client with user properties and plugins
   const { client } = useClientAsyncInit(
-    "client-1jKRKqgQNUDG6QY5wHhX2pFDELaEnSUFWw8vB879CBN", // STATSIG - Client SDK key
-    getUserProperties(), // STATSIG - Pass user properties for targeting and analytics
-    { 
-      // STATSIG - Enable automatic event capture and session replay plugins
-      plugins: [ new StatsigAutoCapturePlugin(), new StatsigSessionReplayPlugin() ] 
-    },
+    "client-1jKRKqgQNUDG6QY5wHhX2pFDELaEnSUFWw8vB879CBN",
+    getUserProperties(), // STATSIG - Using your user properties function
+    { plugins: [new StatsigAutoCapturePlugin(), new StatsigSessionReplayPlugin()] },
   );
 
   return (
-    // STATSIG - Wrap app with StatsigProvider to make client available to all components
     <StatsigProvider client={client} loadingComponent={<div>Loading...</div>}>
       <WorldClockDashboard />
     </StatsigProvider>
