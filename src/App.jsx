@@ -183,6 +183,8 @@ const WorldClockDashboard = () => {
   const { client } = useStatsigClient();  // STATSIG - Get Statsig client instance - NOTE: next 2 lines of code are also Statsig
   const dashboardStore = client.getParameterStore("dashboard_settings"); 
   const dashboardTitle = dashboardStore.get("title", "World Clock Dashboard"); 
+  const taglineLayer = client.getLayer("tagline_layer");  // STATSIG - layer for tagline variants
+  const taglineText = taglineLayer.get("tagline", "Keep track of time across the globe"); 
   
   const prominentUpgradeExp = client.getExperiment("prominent_upgrade_icon"); // STATSIG - experiment
   const upgradeStyle = prominentUpgradeExp.get("style", "original"); // STATSIG - experiment
@@ -637,7 +639,7 @@ const WorldClockDashboard = () => {
               className="font-light"
               style={{ color: "#9ca3af" }}
             >
-              Keep track of time across the globe
+              {taglineText}
             </p>
           </div>
 
