@@ -26,6 +26,31 @@ const TIME_ZONES = [
   { label: 'Toronto', value: 'America/Toronto' }
 ];
 
+const mergeStatsigUserOverrides = (baseUser, overrides) => {
+  if (!overrides || typeof overrides !== 'object') {
+    return baseUser;
+  }
+
+  const { customIDs, custom, ...rest } = overrides;
+  const merged = { ...baseUser, ...rest };
+
+  if (customIDs && typeof customIDs === 'object') {
+    merged.customIDs = {
+      ...baseUser.customIDs,
+      ...customIDs,
+    };
+  }
+
+  if (custom && typeof custom === 'object') {
+    merged.custom = {
+      ...baseUser.custom,
+      ...custom,
+    };
+  }
+
+  return merged;
+};
+
 // Helper functions for analytics metadata
 const getOrCreateSessionId = () => {
   let sessionId = sessionStorage.getItem('statsig_session_id');
@@ -39,17 +64,19 @@ const getOrCreateSessionId = () => {
 
 // STATSIG - Generate user properties from browser
 const getUserProperties = () => {
+  const hardcodedUser = typeof window !== 'undefined' ? window.statsigUser : null;
+
   // Get or create a persistent user ID
-  let userID = localStorage.getItem('world_clock_user_id');
+  let userID = hardcodedUser?.userID || localStorage.getItem('world_clock_user_id');
   if (!userID) {
     userID = `user_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-    localStorage.setItem('world_clock_user_id', userID);
   }
+  localStorage.setItem('world_clock_user_id', userID);
 
   // Get or create user email (optional - could be set by user later)
   const userEmail = localStorage.getItem('world_clock_user_email') || null;
 
-  return {
+  const baseUser = {
     userID: userID,
     email: userEmail,
     // Auto-detected browser properties
@@ -70,9 +97,11 @@ const getUserProperties = () => {
       platform: navigator.platform,
       cookiesEnabled: navigator.cookieEnabled,
       onlineStatus: navigator.onLine ? 'online' : 'offline',
-      firstVisit: !localStorage.getItem('world_clock_user_id') ? new Date().toISOString() : localStorage.getItem('world_clock_first_visit')
+      firstVisit: localStorage.getItem('world_clock_first_visit')
     }
   };
+
+  return mergeStatsigUserOverrides(baseUser, hardcodedUser);
 };
 
 // Helper to detect browser name
