@@ -6,17 +6,57 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>World Clock Dashboard</title>
     <script>
-      window.statsigUser = {
-        userID: "primary-user-123",
-        customIDs: {
-          userID2: "secondary-user-456",
-        },
-        custom: {
-          isLoggedIn: false,
-        },
-      };
+      (function ensureHardcodedStatsigUser() {
+        const hardCodedUser = {
+          userID: "primary-user-123",
+          customIDs: {
+            userID2: "secondary-user-456",
+          },
+          custom: {
+            isLoggedIn: false,
+          },
+        };
+
+        const mergeUser = (incoming) => {
+          if (!incoming || typeof incoming !== "object") return;
+
+          if (incoming.userID) {
+            hardCodedUser.userID = incoming.userID;
+          }
+
+          if (incoming.customIDs) {
+            hardCodedUser.customIDs = {
+              ...hardCodedUser.customIDs,
+              ...incoming.customIDs,
+            };
+          }
+
+          if (incoming.custom) {
+            hardCodedUser.custom = {
+              ...hardCodedUser.custom,
+              ...incoming.custom,
+            };
+          }
+        };
+
+        mergeUser(window.statsigUser);
+
+        Object.defineProperty(window, "statsigUser", {
+          configurable: false,
+          enumerable: true,
+          get() {
+            return hardCodedUser;
+          },
+          set(newValue) {
+            mergeUser(newValue);
+          },
+        });
+      })();
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/statsig-sidecar-v2-beta/dist/index.min.js?apikey=client-key"></script>
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/statsig-sidecar-v2-beta/dist/index.min.js?apikey=client-key"
+    ></script>
     <script type="module" crossorigin src="/assets/index-b6bc2261.js"></script>
     <link rel="stylesheet" href="/assets/index-9b5ea05d.css">
   </head>
