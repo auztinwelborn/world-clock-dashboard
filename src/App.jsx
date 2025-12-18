@@ -210,6 +210,14 @@ const WorldClockDashboard = () => {
   ]);
 
   const { client } = useStatsigClient();  // STATSIG - Get Statsig client instance - NOTE: next 2 lines of code are also Statsig
+  /*
+   * STATSIG A/A SMOKE TEST: Logs exposure for aa_dashboard_smoke_test without changing UX.
+   * Remove this block after validating diagnostics.
+   */
+  useEffect(() => {
+    const aaExperiment = client.getExperiment("aa_dashboard_smoke_test");
+    aaExperiment.get("aa_dummy", "same_value");
+  }, [client]);
   const dashboardStore = client.getParameterStore("dashboard_settings"); 
   const dashboardTitle = dashboardStore.get("title", "World Clock Dashboard"); 
   const taglineLayer = client.getLayer("homepage_layer");  // STATSIG - layer for homepage variants
